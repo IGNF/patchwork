@@ -1,0 +1,16 @@
+name: patchwork
+channels:
+  - conda-forge
+dependencies:
+  - python==3.11.*
+  - pip
+  - pytest
+  - laspy
+  - numpy
+  - geopandas==0.*
+  - shapely>=2.0.3
+    # --------- hydra configs --------- #
+  - hydra-core
+  - hydra-colorlog
+  # ----------- linting --------------- #
+  - flake8
