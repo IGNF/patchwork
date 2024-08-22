@@ -88,7 +88,7 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
                                 suffixes=('', config.RECIPIENT_SUFFIX)
                                 )
 
-        # only keep donor points in tiles where there is no hd point
+        # only keep donor points in patches where there is no recipient point
         extra_points = joined_patches.loc[joined_patches["classification" + config.RECIPIENT_SUFFIX].isnull()]
         return extra_points
 
