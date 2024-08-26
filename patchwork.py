@@ -40,11 +40,11 @@ def get_selected_classes_points(config: DictConfig,
     return df_wanted_classes_points
 
 
-def test_column_exists(laspath: str, new_column_name) -> bool:
-    with laspy.open(laspath) as las_file:
-        if new_column_name in las_file.sub_fields_dict.keys():
-            return True
-    return False
+# def is_column_exist(laspath: str, new_column_name) -> bool:
+#     with laspy.open(laspath) as las_file:
+#         if new_column_name in las_file.sub_fields_dict.keys():
+#             return True
+#     return False
 
 
 def get_type(new_column_size: int):
@@ -82,11 +82,11 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
         # since it's a left join, it keeps all the left record (all the donor points)
         #  and put a "NaN" if the recipient point count is null (no record)
         joined_patches = pd.merge(df_donor_points,
-                                df_recipient_non_empty_patches,
-                                on=['patch_x', 'patch_y'],
-                                how='left',
-                                suffixes=('', config.RECIPIENT_SUFFIX)
-                                )
+                                  df_recipient_non_empty_patches,
+                                  on=['patch_x', 'patch_y'],
+                                  how='left',
+                                  suffixes=('', config.RECIPIENT_SUFFIX)
+                                  )
 
         # only keep donor points in patches where there is no recipient point
         extra_points = joined_patches.loc[joined_patches["classification" + config.RECIPIENT_SUFFIX].isnull()]
@@ -103,20 +103,18 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
     # get field to copy :
     recipient_filepath = config.filepath.RECIPIENT_FILE
-    ouput_filepath = config.filepath.OUTPUT
+    ouput_filepath = config.filepath.OUTPUT_FILE
     with laspy.open(recipient_filepath) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
 
     # get fields that are in the donor file we can transmit to the recipient whitout problem
     # classification is in the fields to exclude because it will be copy in a special way
     fields_to_exclude = ["patch_x", "patch_y", "classification", "classification" + config.RECIPIENT_SUFFIX]
-    fields_to_keep_old = [field for field in extra_points.columns if
-                      (field in recipient_fields_list)
-                      and (field not in fields_to_exclude)]
-    
+
     fields_to_keep = [field for field in recipient_fields_list if
                       (field.lower() in extra_points.columns)
-                      and (field.lower() not in fields_to_exclude)]
+                      and (field.lower() not in fields_to_exclude)
+                      ]
 
     copy2(recipient_filepath, ouput_filepath)
 
@@ -134,7 +132,7 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
         if not config.NEW_COLUMN:
             # translate the classification values:
-            for classification in config.class_list.DONOR_CLASS_LIST:
+            for classification in config.DONOR_CLASS_LIST:
                 new_classification = config.VIRTUAL_CLASS_TRANSLATION[classification]
                 extra_points.loc[extra_points['classification'] == classification, 'classification'] \
                     = new_classification

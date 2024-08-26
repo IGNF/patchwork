@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 from patchwork import patchwork
 
 
-@hydra.main(config_path="configs/", config_name="config_title_stitching.yaml", version_base="1.2")
+@hydra.main(config_path="configs/", config_name="configs_patchwork.yaml", version_base="1.2")
 def run(config: DictConfig):
     patchwork(config)
 
