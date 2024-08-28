@@ -59,6 +59,9 @@ def test_get_complementary_points():
 
 def test_get_type():
     assert get_type(8) == np.int8
+    assert get_type(16) == np.int16
+    assert get_type(32) == np.int32
+    assert get_type(64) == np.int64
     with pytest.raises(Exception):
         get_type(7)
 
