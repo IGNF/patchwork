@@ -9,12 +9,16 @@ import pandas as pd
 sys.path.append('../patchwork')
 
 from patchwork import get_complementary_points, get_field_from_header, get_selected_classes_points
-from patchwork import get_type, append_points
+from patchwork import get_type, append_points, CLASSIFICATION_STR
 
 RECIPIENT_TEST_PATH = "test/data/recipient_test.laz"
 RECIPIENT_CLASS_LIST = [2, 3, 9, 17]
 DONOR_TEST_PATH = "test/data/donor_test.las"
 
+RECIPIENT_MORE_FIELDS_TEST_PATH = "test/data/recipient_more_fields_test.laz"
+DONOR_MORE_FIELDS_TEST_PATH = "test/data/donor_more_fields_test.las"
+
+RECIPIENT_SLIDED_TEST_PATH = "test/data/recipient_slided_test.laz"
 
 def test_get_field_from_header():
     with laspy.open(RECIPIENT_TEST_PATH) as recipient_file:
@@ -39,7 +43,7 @@ def test_get_selected_classes_points():
         recipient_points = recipient_file.read().points
 
         df_recipient_points = get_selected_classes_points(config, recipient_points, config.RECIPIENT_CLASS_LIST, [])
-        for classification in np.unique(df_recipient_points['classification']):
+        for classification in np.unique(df_recipient_points[CLASSIFICATION_STR]):
             assert classification in RECIPIENT_CLASS_LIST
 
 
@@ -55,6 +59,57 @@ def test_get_complementary_points():
 
         complementary_points = get_complementary_points(config)
         assert len(complementary_points) == 320
+
+def test_get_complementary_points_2():
+    """test selected_classes_points with more fields in files, different from each other's"""
+    extra_fields_for_recipient = ["f1","f2"]
+    las = laspy.read(RECIPIENT_TEST_PATH)
+    for field in extra_fields_for_recipient:
+        las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
+    las.write(RECIPIENT_MORE_FIELDS_TEST_PATH)
+
+    extra_fields_for_donor = ["f3","f4"]
+    las = laspy.read(DONOR_TEST_PATH)
+    for field in extra_fields_for_donor:
+        las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
+    las.write(DONOR_MORE_FIELDS_TEST_PATH)
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.DONOR_FILE={DONOR_MORE_FIELDS_TEST_PATH}",
+                f"filepath.RECIPIENT_FILE={RECIPIENT_MORE_FIELDS_TEST_PATH}",
+            ]
+        )
+
+        complementary_points = get_complementary_points(config)
+        assert len(complementary_points) == 320
+        columns = complementary_points.columns
+        for field in extra_fields_for_recipient:  # no extra field from the recipient should exist
+            assert field not in columns
+        for field in extra_fields_for_donor:  # every extra field from the donor should exist...
+            assert field in columns
+            assert complementary_points[field].all() == 0 # ...but should be at 0
+
+
+def test_get_complementary_points_3():
+    """test selected_classes_points with 2 files from different areas"""
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.DONOR_FILE={DONOR_TEST_PATH}",
+                f"filepath.RECIPIENT_FILE={RECIPIENT_SLIDED_TEST_PATH}",
+            ]
+        )
+
+        las = laspy.read(RECIPIENT_TEST_PATH)
+        las.points['x'] = las.points['x'] + config.TILE_SIZE
+        las.write(RECIPIENT_SLIDED_TEST_PATH)
+
+        with pytest.raises(Exception):
+            get_complementary_points(config)
 
 
 def test_get_type():
@@ -84,6 +139,6 @@ def test_append_points(tmp_path_factory):
         )
 
         point_count = get_point_count(config.filepath.RECIPIENT_FILE)
-        extra_points = pd.DataFrame(data={'x': [1, ], 'y': [2, ], 'z': [3, ], 'classification': [4, ], })
+        extra_points = pd.DataFrame(data={'x': [1, ], 'y': [2, ], 'z': [3, ], CLASSIFICATION_STR: [4, ], })
         append_points(config, extra_points)
         assert get_point_count(config.filepath.OUTPUT_FILE) == point_count + 1
