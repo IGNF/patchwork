@@ -22,4 +22,18 @@ git clone https://github.com/IGNF/patchwork.git
 conda env create -f environment.yml
 conda activate patchwork
 ```
+## utilisation
 
+Le script peut être lancé via :
+```
+python main.py filepath.DONOR_FILE=[chemin fichier donneur] filepath.RECIPIENT_FILE=[chemin fichier receveur] filepath.OUTPUT_FILE=[chemin fichier de sortie] [autres options]
+```
+Les différentes options, modifiables soit dans le fichierconfigs/configs_patchwork.yaml, soit en ligne de commande comme indiqué juste au-dessus :  
+    
+filepath.DONOR_FILE : Le chemin du fichier qui peut donner des points à ajouter  
+filepath.RECIPIENT_FILE : Le chemin du fichier qui va obtenir des points en plus  
+filepath.OUTPUT_FILE : Le chemin du fichier en sortie  
+DONOR_CLASS_LIST : Défaut [2, 9]. La liste des classes des points du fichier donneur qui peuvent être ajoutés.  
+RECIPIENT_CLASS_LIST : Défaut [2, 3, 9, 17]. La liste des classes des points du fichier receveur qui, s'ils sont absents dans une cellule, justifirons de prendre les points du fichier donneur de la même cellule
+TILE_SIZE : Défaut 1000. Taille du côté de l'emprise carrée représentée par les fichiers lidar d'entrée
+PATCH_SIZE : Défaut 1. taille en mètre du côté d'une cellule (doit être un diviseur de TILE_SIZE, soit pour 1000 : 0.25, 0.5, 2, 4, 5, 10, 25...)  
