@@ -124,6 +124,9 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     copy2(recipient_filepath, ouput_filepath)
 
+    if len(extra_points) == 0: # if no point to add, the job is done after copying the recipient file
+        return
+
     with laspy.open(ouput_filepath, mode="a") as output_las:
         # # if we want a new column, we start by adding its name
         # if NEW_COLUMN:

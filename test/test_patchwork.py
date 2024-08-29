@@ -128,6 +128,8 @@ def get_point_count(file_path):
 
 def test_append_points(tmp_path_factory):
     tmp_file_path = tmp_path_factory.mktemp("data") / "result.laz"
+    point_1 = {'x': 1, 'y': 2, 'z': 3, CLASSIFICATION_STR: 4}
+    point_2 = {'x': 5, 'y': 6, 'z': 7, CLASSIFICATION_STR: 8}
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
@@ -138,7 +140,37 @@ def test_append_points(tmp_path_factory):
             ]
         )
 
-        point_count = get_point_count(config.filepath.RECIPIENT_FILE)
-        extra_points = pd.DataFrame(data={'x': [1, ], 'y': [2, ], 'z': [3, ], CLASSIFICATION_STR: [4, ], })
+        # add 2 points
+        extra_points = pd.DataFrame(data=[point_1, point_2])
         append_points(config, extra_points)
+
+        # assert a point has been added
+        point_count = get_point_count(config.filepath.RECIPIENT_FILE)
+        assert get_point_count(config.filepath.OUTPUT_FILE) == point_count + 2
+
+        # assert fields are the same
+        fields_recipient = get_field_from_header(laspy.read(config.filepath.RECIPIENT_FILE))
+        fields_output = get_field_from_header(laspy.read(config.filepath.OUTPUT_FILE))
+        assert set(fields_recipient) == set(fields_output)
+
+        # assert all points are here
+        las_recipient = laspy.read(config.filepath.RECIPIENT_FILE)
+        las_output = laspy.read(config.filepath.OUTPUT_FILE)
+        for point in las_recipient.points[:10]:  # only 10 points, otherwise it takes too long
+            assert point in las_output.points
+
+        # add 1 point
+        extra_points = pd.DataFrame(data=[point_1, ])
+        append_points(config, extra_points)
+
+        # assert a point has been added
+        point_count = get_point_count(config.filepath.RECIPIENT_FILE)
         assert get_point_count(config.filepath.OUTPUT_FILE) == point_count + 1
+
+        # # add 0 point
+        extra_points = pd.DataFrame(data={'x': [], 'y': [], 'z': [], CLASSIFICATION_STR: []})
+        append_points(config, extra_points)
+
+        # assert a point has been added
+        point_count = get_point_count(config.filepath.RECIPIENT_FILE)
+        assert get_point_count(config.filepath.OUTPUT_FILE) == point_count
