@@ -10,6 +10,7 @@ import laspy
 from laspy import ScaleAwarePointRecord, LasReader
 
 from tools import get_tile_origin_from_pointcloud
+from indices_map import create_indices_map
 
 CLASSIFICATION_STR = 'classification'
 PATCH_X_STR = 'patch_x'
@@ -95,8 +96,7 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
                                   )
 
         # only keep donor points in patches where there is no recipient point
-        extra_points = joined_patches.loc[joined_patches[CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
-        return extra_points
+        return joined_patches.loc[joined_patches[CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
 
 
 def get_field_from_header(las_file: LasReader) -> List[str]:
@@ -104,6 +104,11 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
     Lower case so a comparaison between fields from 2 different files won't fail because of the case"""
     header = las_file.header
     return [dimension.name.lower() for dimension in header.point_format.dimensions]
+
+
+def test_field_exists(config: DictConfig):
+    output_file = laspy.read(config.filepath.OUTPUT_FILE)
+    return config.NEW_COLUMN in get_field_from_header(output_file)
 
 
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
@@ -128,11 +133,12 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
         return
 
     with laspy.open(ouput_filepath, mode="a") as output_las:
-        # # if we want a new column, we start by adding its name
-        # if NEW_COLUMN:
-        #     test_column_exists(ouput_file, NEW_COLUMN)
-        #     new_column_type = get_type(NEW_COLUMN_SIZE)
-        #     output_las.add_extra_dim(laspy.ExtraBytesParams(name=NEW_COLUMN, type=new_column_type))
+        # if we want a new column, we start by adding its name
+        if config.NEW_COLUMN:
+            if test_field_exists(config.filepath.RECIPIENT_FILE, config.NEW_COLUMN):
+                raise ValueError(f"{config.NEW_COLUMN} already exists as column name in {config.filepath.RECIPIENT_FILE}")
+            new_column_type = get_type(config.NEW_COLUMN_SIZE)
+            output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
 
         # put in a new table all extra points and their values on the fields we want to keep
         new_points = laspy.ScaleAwarePointRecord.zeros(extra_points.shape[0], header=output_las.header)
@@ -145,6 +151,9 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
                 new_classification = config.VIRTUAL_CLASS_TRANSLATION[classification]
                 extra_points.loc[extra_points[CLASSIFICATION_STR] == classification, CLASSIFICATION_STR] \
                     = new_classification
+                
+        else:
+            extra_points[config.NEW_COLUMN] =config.VALUE_ADDED_POINTS
 
         new_points.classification = extra_points[CLASSIFICATION_STR]
         output_las.append_points(new_points)
@@ -153,3 +162,4 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 def patchwork(config: DictConfig):
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
+    create_indices_map(config, complementary_bd_points)
