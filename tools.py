@@ -5,7 +5,8 @@ from laspy import ScaleAwarePointRecord
 
 from omegaconf import DictConfig
 
-def get_tile_origin_from_pointcloud(config: DictConfig, points: np.ndarray|ScaleAwarePointRecord) -> Tuple[int, int]:
+
+def get_tile_origin_from_pointcloud(config: DictConfig, points: np.ndarray | ScaleAwarePointRecord) -> Tuple[int, int]:
     """Return the coordinate of the upper left corner of an area defined by the points it contains"""
     if not len(points):
         raise ValueError("No points to determine the coordinate of the tile")

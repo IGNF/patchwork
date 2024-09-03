@@ -16,6 +16,7 @@ CLASSIFICATION_STR = 'classification'
 PATCH_X_STR = 'patch_x'
 PATCH_Y_STR = 'patch_y'
 
+
 def get_selected_classes_points(config: DictConfig,
                                 points_list: ScaleAwarePointRecord,
                                 class_list: list[int],
@@ -71,13 +72,12 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
         coordinates_donor = get_tile_origin_from_pointcloud(config, donor_points)
         coordinates_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
         if coordinates_donor != coordinates_recipient:
-            raise ValueError(f"{config.filepath.DONOR_FILE} and {config.filepath.RECIPIENT_FILE} are not on the same area")
+            raise ValueError(f"{config.filepath.DONOR_FILE} and \
+                             {config.filepath.RECIPIENT_FILE} are not on the same area")
 
         donor_columns = get_field_from_header(donor_file)
         df_donor_points = get_selected_classes_points(config, donor_points, config.DONOR_CLASS_LIST, donor_columns)
         df_recipient_points = get_selected_classes_points(config, recipient_points, config.RECIPIENT_CLASS_LIST, [])
-
-
 
         # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
         # should have no record for when count == 0, therefore "df_recipient_non_empty_patches" list all
@@ -129,14 +129,15 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     copy2(recipient_filepath, ouput_filepath)
 
-    if len(extra_points) == 0: # if no point to add, the job is done after copying the recipient file
+    if len(extra_points) == 0:  # if no point to add, the job is done after copying the recipient file
         return
 
     with laspy.open(ouput_filepath, mode="a") as output_las:
         # if we want a new column, we start by adding its name
         if config.NEW_COLUMN:
             if test_field_exists(config.filepath.RECIPIENT_FILE, config.NEW_COLUMN):
-                raise ValueError(f"{config.NEW_COLUMN} already exists as column name in {config.filepath.RECIPIENT_FILE}")
+                raise ValueError(f"{config.NEW_COLUMN} already exists as \
+                                 column name in {config.filepath.RECIPIENT_FILE}")
             new_column_type = get_type(config.NEW_COLUMN_SIZE)
             output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
 
@@ -151,9 +152,9 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
                 new_classification = config.VIRTUAL_CLASS_TRANSLATION[classification]
                 extra_points.loc[extra_points[CLASSIFICATION_STR] == classification, CLASSIFICATION_STR] \
                     = new_classification
-                
+
         else:
-            extra_points[config.NEW_COLUMN] =config.VALUE_ADDED_POINTS
+            extra_points[config.NEW_COLUMN] = config.VALUE_ADDED_POINTS
 
         new_points.classification = extra_points[CLASSIFICATION_STR]
         output_las.append_points(new_points)

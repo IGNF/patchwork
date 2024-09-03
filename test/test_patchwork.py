@@ -23,6 +23,7 @@ DONOR_MORE_FIELDS_TEST_PATH = "test/data/donor_more_fields_test.las"
 
 RECIPIENT_SLIDED_TEST_PATH = "test/data/recipient_slided_test.laz"
 
+
 def test_get_field_from_header():
     with laspy.open(RECIPIENT_TEST_PATH) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
@@ -65,15 +66,16 @@ def test_get_complementary_points():
         complementary_points = get_complementary_points(config)
         assert len(complementary_points) == 320
 
+
 def test_get_complementary_points_2():
     """test selected_classes_points with more fields in files, different from each other's"""
-    extra_fields_for_recipient = ["f1","f2"]
+    extra_fields_for_recipient = ["f1", "f2"]
     las = laspy.read(RECIPIENT_TEST_PATH)
     for field in extra_fields_for_recipient:
         las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
     las.write(RECIPIENT_MORE_FIELDS_TEST_PATH)
 
-    extra_fields_for_donor = ["f3","f4"]
+    extra_fields_for_donor = ["f3", "f4"]
     las = laspy.read(DONOR_TEST_PATH)
     for field in extra_fields_for_donor:
         las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
@@ -97,7 +99,7 @@ def test_get_complementary_points_2():
             assert field not in columns
         for field in extra_fields_for_donor:  # every extra field from the donor should exist...
             assert field in columns
-            assert complementary_points[field].all() == 0 # ...but should be at 0
+            assert complementary_points[field].all() == 0  # ...but should be at 0
 
 
 def test_get_complementary_points_3():
