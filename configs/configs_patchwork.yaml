@@ -26,7 +26,7 @@ filepath:
 
 CRS: 2154
 
-DONOR_CLASS_LIST: [2, 9]
+DONOR_CLASS_LIST: [2, 22]
 RECIPIENT_CLASS_LIST: [2, 3, 9, 17]
 
 RECIPIENT_SUFFIX: "_recipient"
@@ -35,5 +35,5 @@ PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so 
 NEW_COLUMN: False # True if we want to add a column to mark the added points 
 NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64
 VALUE_ADDED_POINTS: 1 # in case of a new column, value of the new point (the other are set to 0)
-VIRTUAL_CLASS_TRANSLATION: {2: 69, 9: 70}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
+VIRTUAL_CLASS_TRANSLATION: {2: 69, 22: 70}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
 # each value of  DONOR_CLASS_LIST must be a key in VIRTUAL_CLASS_TRANSLATION. Not used if NEW_COLUMN is not None (or "")

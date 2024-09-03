@@ -12,7 +12,10 @@ from patchwork import get_complementary_points, get_field_from_header, get_selec
 from patchwork import get_type, append_points, CLASSIFICATION_STR
 
 RECIPIENT_TEST_PATH = "test/data/recipient_test.laz"
+DONOR_CLASS_LIST = [2, 9]
 RECIPIENT_CLASS_LIST = [2, 3, 9, 17]
+VIRTUAL_CLASS_TRANSLATION = {2: 69, 9: 70}
+
 DONOR_TEST_PATH = "test/data/donor_test.las"
 
 RECIPIENT_MORE_FIELDS_TEST_PATH = "test/data/recipient_more_fields_test.laz"
@@ -54,6 +57,8 @@ def test_get_complementary_points():
             overrides=[
                 f"filepath.DONOR_FILE={DONOR_TEST_PATH}",
                 f"filepath.RECIPIENT_FILE={RECIPIENT_TEST_PATH}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ]
         )
 
@@ -80,6 +85,8 @@ def test_get_complementary_points_2():
             overrides=[
                 f"filepath.DONOR_FILE={DONOR_MORE_FIELDS_TEST_PATH}",
                 f"filepath.RECIPIENT_FILE={RECIPIENT_MORE_FIELDS_TEST_PATH}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ]
         )
 
