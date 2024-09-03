@@ -33,6 +33,7 @@ Les différentes options, modifiables soit dans le fichierconfigs/configs_patchw
 filepath.DONOR_FILE : Le chemin du fichier qui peut donner des points à ajouter  
 filepath.RECIPIENT_FILE : Le chemin du fichier qui va obtenir des points en plus  
 filepath.OUTPUT_FILE : Le chemin du fichier en sortie  
+filepath.OUTPUT_INDICES_MAP : Le chemin de sortie du fichier d'indice  
 DONOR_CLASS_LIST : Défaut [2, 9]. La liste des classes des points du fichier donneur qui peuvent être ajoutés.  
 RECIPIENT_CLASS_LIST : Défaut [2, 3, 9, 17]. La liste des classes des points du fichier receveur qui, s'ils sont absents dans une cellule, justifirons de prendre les points du fichier donneur de la même cellule
 TILE_SIZE : Défaut 1000. Taille du côté de l'emprise carrée représentée par les fichiers lidar d'entrée
