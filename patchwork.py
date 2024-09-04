@@ -157,8 +157,8 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
         else:
             extra_points[config.NEW_COLUMN] = config.VALUE_ADDED_POINTS
+            new_points[config.NEW_COLUMN] = extra_points[config.NEW_COLUMN]
 
-        new_points[config.NEW_COLUMN] = extra_points[config.NEW_COLUMN]
         new_points.classification = extra_points[CLASSIFICATION_STR]
         output_las.append_points(new_points)
 

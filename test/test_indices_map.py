@@ -11,7 +11,7 @@ from indices_map import create_indices_grid, create_indices_map
 PATCH_SIZE = 1
 TILE_SIZE = 3
 
-DATA_POINTS = {'x': [0.0, 1.5, 2.5, 1.5, 2.5], 'y': [0.0, 0.5, 0.5, 1.5, 2.5]}
+DATA_POINTS = {'x': [0.0, 1.5, 3, 1.5, 2.5], 'y': [0.0, 0.5, 0.5, 1.5, 3]}
 # we want y=0 at the bottom, but in a ndarray it's at the top, so grid['y'] = SIZE_Y - data_points['y']
 POINTS_IN_GRID = [(0, 2), (1, 2), (2, 2), (1, 1), (2, 0)]
 POINTS_NOT_IN_GRID = [(0, 1), (2, 1), (0, 0), (0, 1)]

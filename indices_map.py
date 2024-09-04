@@ -12,13 +12,18 @@ def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     1 if the patch has at least one point of df_points
     0 if the patch has no point from df_points
     """
+    size_grid = int(config.TILE_SIZE / config.PATCH_SIZE)
+
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
     list_coordinates_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
-    # list_coordinates_y is different from list_coordinates_x because of how rounding works
-    # (corner_x is "bottom", corner_y is "top")
-    list_coordinates_y = np.int32(corner_y / config.PATCH_SIZE) - np.int32(df_points.y / config.PATCH_SIZE) - 1
-    grid = np.zeros((int(config.TILE_SIZE / config.PATCH_SIZE), int(config.TILE_SIZE / config.PATCH_SIZE)))
+    list_coordinates_y = np.int32((corner_y - df_points.y) / config.PATCH_SIZE)
+
+    # edge cases where points are exactly on the... edge of the tile, but still valid 
+    list_coordinates_x[ list_coordinates_x == size_grid] = size_grid - 1
+    list_coordinates_y[ list_coordinates_y == size_grid] = size_grid - 1
+
+    grid = np.zeros((size_grid, size_grid))
 
     grid[list_coordinates_x, list_coordinates_y] = 1
     return grid.transpose()
