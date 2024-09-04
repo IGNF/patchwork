@@ -15,6 +15,11 @@ RECIPIENT_TEST_PATH = "test/data/recipient_test.laz"
 DONOR_CLASS_LIST = [2, 9]
 RECIPIENT_CLASS_LIST = [2, 3, 9, 17]
 VIRTUAL_CLASS_TRANSLATION = {2: 69, 9: 70}
+POINT_1 = {'x': 1, 'y': 2, 'z': 3, CLASSIFICATION_STR: 4}
+POINT_2 = {'x': 5, 'y': 6, 'z': 7, CLASSIFICATION_STR: 8}
+NEW_COLUMN = "virtual_column"
+NEW_COLUMN_SIZE = 8
+VALUE_ADDED_POINTS = 1
 
 DONOR_TEST_PATH = "test/data/donor_test.las"
 
@@ -137,8 +142,7 @@ def get_point_count(file_path):
 
 def test_append_points(tmp_path_factory):
     tmp_file_path = tmp_path_factory.mktemp("data") / "result.laz"
-    point_1 = {'x': 1, 'y': 2, 'z': 3, CLASSIFICATION_STR: 4}
-    point_2 = {'x': 5, 'y': 6, 'z': 7, CLASSIFICATION_STR: 8}
+
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
@@ -150,7 +154,7 @@ def test_append_points(tmp_path_factory):
         )
 
         # add 2 points
-        extra_points = pd.DataFrame(data=[point_1, point_2])
+        extra_points = pd.DataFrame(data=[POINT_1, POINT_2])
         append_points(config, extra_points)
 
         # assert a point has been added
@@ -169,7 +173,7 @@ def test_append_points(tmp_path_factory):
             assert point in las_output.points
 
         # add 1 point
-        extra_points = pd.DataFrame(data=[point_1, ])
+        extra_points = pd.DataFrame(data=[POINT_1, ])
         append_points(config, extra_points)
 
         # assert a point has been added
@@ -183,3 +187,37 @@ def test_append_points(tmp_path_factory):
         # assert a point has been added
         point_count = get_point_count(config.filepath.RECIPIENT_FILE)
         assert get_point_count(config.filepath.OUTPUT_FILE) == point_count
+
+def test_append_points_new_column(tmp_path_factory):
+    tmp_file_path = tmp_path_factory.mktemp("data") / "result.laz"
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.RECIPIENT_FILE={RECIPIENT_TEST_PATH}",
+                f"filepath.OUTPUT_FILE={tmp_file_path}",
+                f"NEW_COLUMN={NEW_COLUMN}",
+                f"NEW_COLUMN_SIZE={NEW_COLUMN_SIZE}",
+                f"VALUE_ADDED_POINTS={VALUE_ADDED_POINTS}"
+            ]
+        )
+
+        # add 2 points
+        extra_points = pd.DataFrame(data=[POINT_1, POINT_2])
+        append_points(config, extra_points)
+
+        # assert a point has been added
+        point_count = get_point_count(config.filepath.RECIPIENT_FILE)
+        assert get_point_count(config.filepath.OUTPUT_FILE) == point_count + 2
+
+        # assert the new column is here
+        fields_output = get_field_from_header(laspy.read(config.filepath.OUTPUT_FILE))
+        assert NEW_COLUMN in fields_output
+
+        # assert both points added, and only them, have NEW_COLUMN == VALUE_ADDED_POINTS
+        las_output = laspy.read(config.filepath.OUTPUT_FILE)
+        new_column = las_output.points[NEW_COLUMN]
+        assert new_column[-1] == VALUE_ADDED_POINTS
+        assert new_column[-2] == VALUE_ADDED_POINTS
+        assert max(new_column[:-2]) == 0

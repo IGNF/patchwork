@@ -32,7 +32,7 @@ RECIPIENT_CLASS_LIST: [2, 3, 9, 17]
 RECIPIENT_SUFFIX: "_recipient"
 TILE_SIZE: 1000
 PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so for 1000: 0.25, 0.5, 2, 4, 5, 10, 25...
-NEW_COLUMN: False # True if we want to add a column to mark the added points 
+NEW_COLUMN: null # If not null, contains the name of the new column
 NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64
 VALUE_ADDED_POINTS: 1 # in case of a new column, value of the new point (the other are set to 0)
 VIRTUAL_CLASS_TRANSLATION: {2: 69, 22: 70}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
