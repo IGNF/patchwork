@@ -8,9 +8,9 @@ from tools import get_tile_origin_from_pointcloud
 
 
 def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
-    """ create a binary grid matching the tile, where each patch is equal to:
-    1 if the patch has at least one new point
-    0 if the patch has no new point
+    """ create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
+    1 if the patch has at least one point of df_points
+    0 if the patch has no point from df_points
     """
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
