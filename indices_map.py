@@ -14,13 +14,13 @@ def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     """
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
-    coordinate_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
-    # coordinate_y is different from coordinate_x because of how rounding works
+    list_coordinates_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
+    # list_coordinates_y is different from list_coordinates_x because of how rounding works
     # (corner_x is "bottom", corner_y is "top")
-    coordinate_y = np.int32(corner_y / config.PATCH_SIZE) - np.int32(df_points.y / config.PATCH_SIZE) - 1
+    list_coordinates_y = np.int32(corner_y / config.PATCH_SIZE) - np.int32(df_points.y / config.PATCH_SIZE) - 1
     grid = np.zeros((int(config.TILE_SIZE / config.PATCH_SIZE), int(config.TILE_SIZE / config.PATCH_SIZE)))
 
-    grid[coordinate_x, coordinate_y] = 1
+    grid[list_coordinates_x, list_coordinates_y] = 1
     return grid.transpose()
 
 
