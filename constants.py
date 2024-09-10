@@ -1,0 +1,4 @@
+# INTERNAL CONSTANTS, NOT TO BE CHANGED
+CLASSIFICATION_STR = 'classification'
+PATCH_X_STR = 'patch_x'
+PATCH_Y_STR = 'patch_y'

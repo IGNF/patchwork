@@ -2,10 +2,11 @@ import numpy as np
 from omegaconf import DictConfig
 import rasterio as rs
 from rasterio.transform import from_origin
+import pandas as pd
 from pandas import DataFrame
 
 from tools import get_tile_origin_from_pointcloud
-
+from constants import PATCH_X_STR, PATCH_Y_STR
 
 def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     """ create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
@@ -20,8 +21,8 @@ def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     list_coordinates_y = np.int32((corner_y - df_points.y) / config.PATCH_SIZE)
 
     # edge cases where points are exactly on the... edge of the tile, but still valid 
-    list_coordinates_x[ list_coordinates_x == size_grid] = size_grid - 1
-    list_coordinates_y[ list_coordinates_y == size_grid] = size_grid - 1
+    list_coordinates_x[list_coordinates_x == size_grid] = size_grid - 1
+    list_coordinates_y[list_coordinates_y == size_grid] = size_grid - 1
 
     grid = np.zeros((size_grid, size_grid))
 
@@ -45,3 +46,22 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
                           transform=transform)
     indices_map.write(grid, 1)
     indices_map.close()
+
+def read_indices_map(config: DictConfig):
+    indices_map = rs.open(config.filepath.INPUT_INDICES_MAP)
+    transformer = indices_map.get_transform()
+    grid = indices_map.read()
+    grid = grid[0]
+    grid_t = grid.transpose()
+    list_coordinates = np.argwhere(grid_t == 1)
+
+    list_coordinates = list_coordinates.transpose()
+
+    patch_x = list_coordinates[0] * config.PATCH_SIZE + transformer[0]
+    patch_y = grid.shape[1] - (transformer[3] - list_coordinates[1] * config.PATCH_SIZE)
+
+    table = np.array([patch_x, patch_y]).transpose()
+    field = [PATCH_X_STR, PATCH_Y_STR]
+
+    df_indices = pd.DataFrame(table, columns=field)
+    return df_indices

@@ -9,7 +9,9 @@ import pandas as pd
 sys.path.append('../patchwork')
 
 from patchwork import get_complementary_points, get_field_from_header, get_selected_classes_points
-from patchwork import get_type, append_points, CLASSIFICATION_STR
+from patchwork import get_type, append_points
+from tools import get_tile_origin_from_pointcloud
+from constants import CLASSIFICATION_STR
 
 RECIPIENT_TEST_PATH = "test/data/recipient_test.laz"
 DONOR_CLASS_LIST = [2, 9]
@@ -48,12 +50,14 @@ def test_get_selected_classes_points():
             ]
         )
 
-    with laspy.open(config.filepath.RECIPIENT_FILE) as recipient_file:
-        recipient_points = recipient_file.read().points
+        with laspy.open(config.filepath.RECIPIENT_FILE) as recipient_file:
+            recipient_points = recipient_file.read().points
 
-        df_recipient_points = get_selected_classes_points(config, recipient_points, config.RECIPIENT_CLASS_LIST, [])
-        for classification in np.unique(df_recipient_points[CLASSIFICATION_STR]):
-            assert classification in RECIPIENT_CLASS_LIST
+            tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
+
+            df_recipient_points = get_selected_classes_points(config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, [])
+            for classification in np.unique(df_recipient_points[CLASSIFICATION_STR]):
+                assert classification in RECIPIENT_CLASS_LIST
 
 
 def test_get_complementary_points():
@@ -64,6 +68,7 @@ def test_get_complementary_points():
                 f"filepath.DONOR_FILE={DONOR_TEST_PATH}",
                 f"filepath.RECIPIENT_FILE={RECIPIENT_TEST_PATH}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ]
         )
@@ -93,6 +98,7 @@ def test_get_complementary_points_2():
                 f"filepath.DONOR_FILE={DONOR_MORE_FIELDS_TEST_PATH}",
                 f"filepath.RECIPIENT_FILE={RECIPIENT_MORE_FIELDS_TEST_PATH}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ]
         )

@@ -1,12 +1,15 @@
 import sys
 
 from hydra import compose, initialize
+import numpy as np
 import pandas as pd
 import rasterio as rs
+from rasterio.transform import from_origin
 
 sys.path.append('../patchwork')
 
-from indices_map import create_indices_grid, create_indices_map
+from indices_map import create_indices_grid, create_indices_map, read_indices_map
+from constants import PATCH_X_STR, PATCH_Y_STR
 
 PATCH_SIZE = 1
 TILE_SIZE = 3
@@ -60,3 +63,36 @@ def test_create_indices_map(tmp_path_factory):
             assert grid[point] == 1
         for point in POINTS_NOT_IN_GRID:
             assert grid[point] == 0
+
+
+def test_read_indices_map(tmp_path_factory):
+    tmp_file_path = tmp_path_factory.mktemp("data") / "indices.tif"
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"PATCH_SIZE={PATCH_SIZE}",
+                f"TILE_SIZE={TILE_SIZE}",
+                f"filepath.INPUT_INDICES_MAP={tmp_file_path}",
+            ]
+        )
+
+        grid = np.array([
+            [0, 0, 1],
+            [0, 1, 0],
+            [1, 1, 1],])
+
+        transform = from_origin(0, 3, config.PATCH_SIZE, config.PATCH_SIZE)
+        indices_map = rs.open(config.filepath.INPUT_INDICES_MAP, 'w', driver='GTiff',
+                            height=grid.shape[0], width=grid.shape[1],
+                            count=1, dtype=str(grid.dtype),
+                            crs=config.CRS,
+                            transform=transform)
+        indices_map.write(grid, 1)
+        indices_map.close()
+
+        df_indices = read_indices_map(config)
+        for _, row in df_indices.iterrows():
+            assert (row[PATCH_X_STR], row[PATCH_Y_STR]) in POINTS_IN_GRID
+        assert len(df_indices) == len(POINTS_IN_GRID)
