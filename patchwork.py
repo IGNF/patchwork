@@ -1,6 +1,6 @@
 
 from shutil import copy2
-from typing import List
+from typing import List, Tuple
 
 from omegaconf import DictConfig
 
@@ -9,13 +9,12 @@ import pandas as pd
 import laspy
 from laspy import ScaleAwarePointRecord, LasReader
 
-from tools import get_tile_origin_from_pointcloud
-
-CLASSIFICATION_STR = 'classification'
-PATCH_X_STR = 'patch_x'
-PATCH_Y_STR = 'patch_y'
+from tools import get_tile_origin_from_pointcloud, crop_tile, crop_temp
+from indices_map import create_indices_map, read_indices_map
+from constants import CLASSIFICATION_STR, PATCH_X_STR, PATCH_Y_STR
 
 def get_selected_classes_points(config: DictConfig,
+                                tile_origin: Tuple[int, int],
                                 points_list: ScaleAwarePointRecord,
                                 class_list: list[int],
                                 fields_to_keep: list[str]) -> pd.DataFrame:
@@ -42,6 +41,12 @@ def get_selected_classes_points(config: DictConfig,
     all_fields_list = [*fields_to_keep, PATCH_X_STR, PATCH_Y_STR, CLASSIFICATION_STR]
     df_wanted_classes_points = pd.DataFrame(wanted_classes_points, columns=all_fields_list)
 
+    # "push" the points on the limit of the tile to the closest patch
+    mask_points_on_max_x = df_wanted_classes_points[PATCH_X_STR] == tile_origin[0] + config.TILE_SIZE
+    df_wanted_classes_points.loc[mask_points_on_max_x, PATCH_X_STR] = tile_origin[0] + config.TILE_SIZE - 1
+    mask_points_on_max_y = df_wanted_classes_points[PATCH_Y_STR] == tile_origin[1]
+    df_wanted_classes_points.loc[mask_points_on_max_y, PATCH_Y_STR] = tile_origin[1] - 1
+
     return df_wanted_classes_points
 
 
@@ -63,20 +68,21 @@ def get_type(new_column_size: int):
 def get_complementary_points(config: DictConfig) -> pd.DataFrame:
     with laspy.open(config.filepath.DONOR_FILE) as donor_file, \
             laspy.open(config.filepath.RECIPIENT_FILE) as recipient_file:
-        donor_points = donor_file.read().points
-        recipient_points = recipient_file.read().points
+        raw_donor_points = donor_file.read().points
+        donor_points = crop_tile(config, raw_donor_points)
+        raw_recipient_points = recipient_file.read().points
+        recipient_points = crop_tile(config, raw_recipient_points)
 
         # check if both files are on the same area
-        coordinates_donor = get_tile_origin_from_pointcloud(config, donor_points)
-        coordinates_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
-        if coordinates_donor != coordinates_recipient:
-            raise ValueError(f"{config.filepath.DONOR_FILE} and {config.filepath.RECIPIENT_FILE} are not on the same area")
+        tile_origin_donor = get_tile_origin_from_pointcloud(config, donor_points)
+        tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
+        if tile_origin_donor != tile_origin_recipient:
+            raise ValueError(f"{config.filepath.DONOR_FILE} and \
+                             {config.filepath.RECIPIENT_FILE} are not on the same area")
 
         donor_columns = get_field_from_header(donor_file)
-        df_donor_points = get_selected_classes_points(config, donor_points, config.DONOR_CLASS_LIST, donor_columns)
-        df_recipient_points = get_selected_classes_points(config, recipient_points, config.RECIPIENT_CLASS_LIST, [])
-
-
+        df_donor_points = get_selected_classes_points(config, tile_origin_donor, donor_points, config.DONOR_CLASS_LIST, donor_columns)
+        df_recipient_points = get_selected_classes_points(config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, [])
 
         # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
         # should have no record for when count == 0, therefore "df_recipient_non_empty_patches" list all
@@ -95,8 +101,7 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
                                   )
 
         # only keep donor points in patches where there is no recipient point
-        extra_points = joined_patches.loc[joined_patches[CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
-        return extra_points
+        return joined_patches.loc[joined_patches[CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
 
 
 def get_field_from_header(las_file: LasReader) -> List[str]:
@@ -104,6 +109,11 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
     Lower case so a comparaison between fields from 2 different files won't fail because of the case"""
     header = las_file.header
     return [dimension.name.lower() for dimension in header.point_format.dimensions]
+
+
+def test_field_exists(file_path:str, colmun:str) -> bool:
+    output_file = laspy.read(file_path)
+    return colmun in get_field_from_header(output_file)
 
 
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
@@ -115,7 +125,11 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     # get fields that are in the donor file we can transmit to the recipient without problem
     # classification is in the fields to exclude because it will be copy in a special way
-    fields_to_exclude = [PATCH_X_STR, PATCH_Y_STR, CLASSIFICATION_STR, CLASSIFICATION_STR + config.RECIPIENT_SUFFIX]
+    fields_to_exclude = [PATCH_X_STR,
+                         PATCH_Y_STR,
+                         CLASSIFICATION_STR,
+                         CLASSIFICATION_STR + config.RECIPIENT_SUFFIX
+                         ]
 
     fields_to_keep = [field for field in recipient_fields_list if
                       (field.lower() in extra_points.columns)
@@ -124,16 +138,20 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     copy2(recipient_filepath, ouput_filepath)
 
-    if len(extra_points) == 0: # if no point to add, the job is done after copying the recipient file
+    if len(extra_points) == 0:  # if no point to add, the job is done after copying the recipient file
         return
 
-    with laspy.open(ouput_filepath, mode="a") as output_las:
-        # # if we want a new column, we start by adding its name
-        # if NEW_COLUMN:
-        #     test_column_exists(ouput_file, NEW_COLUMN)
-        #     new_column_type = get_type(NEW_COLUMN_SIZE)
-        #     output_las.add_extra_dim(laspy.ExtraBytesParams(name=NEW_COLUMN, type=new_column_type))
+    # if we want a new column, we start by adding its name
+    if config.NEW_COLUMN:
+        if test_field_exists(config.filepath.RECIPIENT_FILE, config.NEW_COLUMN):
+            raise ValueError(f"{config.NEW_COLUMN} already exists as \
+                             column name in {config.filepath.RECIPIENT_FILE}")
+        new_column_type = get_type(config.NEW_COLUMN_SIZE)
+        output_las = laspy.read(ouput_filepath)
+        output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
+        output_las.write(ouput_filepath)
 
+    with laspy.open(ouput_filepath, mode="a") as output_las:
         # put in a new table all extra points and their values on the fields we want to keep
         new_points = laspy.ScaleAwarePointRecord.zeros(extra_points.shape[0], header=output_las.header)
         for field in fields_to_keep:
@@ -146,10 +164,19 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
                 extra_points.loc[extra_points[CLASSIFICATION_STR] == classification, CLASSIFICATION_STR] \
                     = new_classification
 
+        else:
+            extra_points[config.NEW_COLUMN] = config.VALUE_ADDED_POINTS
+            new_points[config.NEW_COLUMN] = extra_points[config.NEW_COLUMN]
+
         new_points.classification = extra_points[CLASSIFICATION_STR]
         output_las.append_points(new_points)
 
 
 def patchwork(config: DictConfig):
+    crop_temp()
+
+    # if config.filepath.INPUT_INDICES_MAP:
+    #     read_indices_map(config)
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
+    create_indices_map(config, complementary_bd_points)

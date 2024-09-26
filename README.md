@@ -11,6 +11,8 @@ En sortie il y a :
   
 Les deux fichiers d'entrée sont découpés en tuiles carrées, généralement d'1m². Si une tuile du fichier à enrichir ne contient aucun point ayant le classement qui nous intéresse, on prend les points de la tuile de même emplacement du fichier de points supplémentaire.
 
+L'appartenance à une tuile est décidée par un arrondi par défaut, c'est-à-dire que tous les éléments de [n, n+1[ (ouvert en n+1) font parti de la même tuile.
+
 ## Installation
 pré-requis: installer anaconda
 Cloner le dépôt
@@ -33,6 +35,8 @@ Les différentes options, modifiables soit dans le fichierconfigs/configs_patchw
 filepath.DONOR_FILE : Le chemin du fichier qui peut donner des points à ajouter  
 filepath.RECIPIENT_FILE : Le chemin du fichier qui va obtenir des points en plus  
 filepath.OUTPUT_FILE : Le chemin du fichier en sortie  
+filepath.OUTPUT_INDICES_MAP : Le chemin de sortie du fichier d'indice  
+filepath.INPUT_INDICES_MAP : Le chemin vers le fichier d'indice en entrée, si on en a un. Autrement, à laisser à "null"  
 DONOR_CLASS_LIST : Défaut [2, 9]. La liste des classes des points du fichier donneur qui peuvent être ajoutés.  
 RECIPIENT_CLASS_LIST : Défaut [2, 3, 9, 17]. La liste des classes des points du fichier receveur qui, s'ils sont absents dans une cellule, justifirons de prendre les points du fichier donneur de la même cellule
 TILE_SIZE : Défaut 1000. Taille du côté de l'emprise carrée représentée par les fichiers lidar d'entrée
