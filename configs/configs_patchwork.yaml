@@ -38,3 +38,9 @@ NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64
 VALUE_ADDED_POINTS: 1 # in case of a new column, value of the new point (the other are set to 0)
 VIRTUAL_CLASS_TRANSLATION: {2: 69, 22: 70}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
 # each value of  DONOR_CLASS_LIST must be a key in VIRTUAL_CLASS_TRANSLATION. Not used if NEW_COLUMN is not None (or "")
+
+cutter:
+  SHAPEFILE_PATH: null
+  DONOR_DIRECTORY: null
+  RECIPIENT_DIRECTORY: null
+  OUTPUT_DIRECTORY_PATH: null

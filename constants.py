@@ -2,3 +2,5 @@
 CLASSIFICATION_STR = 'classification'
 PATCH_X_STR = 'patch_x'
 PATCH_Y_STR = 'patch_y'
+DONOR_SUBDIRECTORY_NAME = "donor"
+RECIPIENT_SUBDIRECTORY_NAME = "recipient"

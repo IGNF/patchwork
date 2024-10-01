@@ -55,7 +55,13 @@ def test_get_selected_classes_points():
 
             tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
 
-            df_recipient_points = get_selected_classes_points(config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, [])
+            df_recipient_points = get_selected_classes_points(
+                config,
+                tile_origin_recipient,
+                recipient_points,
+                config.RECIPIENT_CLASS_LIST,
+                []
+                )
             for classification in np.unique(df_recipient_points[CLASSIFICATION_STR]):
                 assert classification in RECIPIENT_CLASS_LIST
 
@@ -149,7 +155,6 @@ def get_point_count(file_path):
 def test_append_points(tmp_path_factory):
     tmp_file_path = tmp_path_factory.mktemp("data") / "result.laz"
 
-
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
@@ -193,6 +198,7 @@ def test_append_points(tmp_path_factory):
         # assert a point has been added
         point_count = get_point_count(config.filepath.RECIPIENT_FILE)
         assert get_point_count(config.filepath.OUTPUT_FILE) == point_count
+
 
 def test_append_points_new_column(tmp_path_factory):
     tmp_file_path = tmp_path_factory.mktemp("data") / "result.laz"
