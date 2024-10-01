@@ -184,10 +184,6 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
 
 def patchwork(config: DictConfig):
-    crop_temp()
-
-    # if config.filepath.INPUT_INDICES_MAP:
-    #     read_indices_map(config)
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
     create_indices_map(config, complementary_bd_points)
