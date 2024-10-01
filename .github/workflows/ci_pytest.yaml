@@ -13,18 +13,21 @@ jobs:
         contents: read
         packages: write
 
-steps:
-  - name: Checkout branch
-    uses: actions/checkout@v4
-  - name: Install conda env
-    uses: mamba-org/setup-micromamba@v1.8.1
-    with:
-      environment-file: environment.yml
-      environment-name: patchwork  # activate the environment
-      cache-environment: true
-      cache-downloads: true
-      generate-run-shell: true
-  - name: Unit test
-    shell: micromamba-shell {0}
-    run: |
-      python -m pytest -s --log-cli-level DEBUG
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      # See https://github.com/marketplace/actions/setup-micromamba
+      - name: setup-micromamba
+        uses: mamba-org/setup-micromamba@v1.9.0
+        with:
+          micromamba-version: '1.5.8-0'  # temporary fix as setup-mircomamba hangs with later mamba version
+          environment-file: environment.yml
+          environment-name: patchwork  # activate the environment
+          cache-environment: true
+          cache-downloads: true
+          generate-run-shell: true
+
+      - name: Run tests with pytest
+        shell: micromamba-shell {0}
+        run: python -m pytest ./test -s --log-cli-level DEBUG
