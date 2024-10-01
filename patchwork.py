@@ -9,7 +9,7 @@ import pandas as pd
 import laspy
 from laspy import ScaleAwarePointRecord, LasReader
 
-from tools import get_tile_origin_from_pointcloud, crop_tile, crop_temp
+from tools import get_tile_origin_from_pointcloud, crop_tile
 from indices_map import create_indices_map
 from constants import CLASSIFICATION_STR, PATCH_X_STR, PATCH_Y_STR
 
