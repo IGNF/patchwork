@@ -1,7 +1,7 @@
 import os
 import shutil
 import pathlib
-import logging
+# import logging
 import timeit
 
 import hydra
@@ -13,6 +13,7 @@ from shapely import box
 import numpy as np
 from shapely.geometry import MultiPolygon
 from shapely.vectorized import contains
+from loguru import logger
 
 import constants as c
 from tools import identify_bounds, get_tile_origin_from_pointcloud, crop_tile
@@ -22,14 +23,14 @@ from tools import identify_bounds, get_tile_origin_from_pointcloud, crop_tile
 def patchwork_dispatcher(config: DictConfig):
     # preparing donor files:
     select_lidar(config,
-                 config.cutter.DONOR_DIRECTORY,
-                 config.cutter.OUTPUT_DIRECTORY_PATH,
+                 config.filepath.DONOR_DIRECTORY,
+                 config.filepath.OUTPUT_DIRECTORY_PATH,
                  c.DONOR_SUBDIRECTORY_NAME
                  )
     # preparing recipient files:
     select_lidar(config,
-                 config.cutter.RECIPIENT_DIRECTORY,
-                 config.cutter.OUTPUT_DIRECTORY_PATH,
+                 config.filepath.RECIPIENT_DIRECTORY,
+                 config.filepath.OUTPUT_DIRECTORY_PATH,
                  c.RECIPIENT_SUBDIRECTORY_NAME
                  )
 
@@ -46,16 +47,8 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
     The results are put in: output_directory/XXXX_YYYY/subdirectory_name, where XXXX_YYYY is
     the north west corner of the file
     """
-    log = logging.getLogger(__name__)
-    log.setLevel(logging.INFO)
-    log.handlers = []
 
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s: %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
-
-    worksite = gpd.GeoDataFrame.from_file(config.cutter.SHAPEFILE_PATH)
+    worksite = gpd.GeoDataFrame.from_file(config.filepath.SHAPEFILE_PATH)
     shapefile_geometry = worksite.dissolve().geometry.item()
 
     time_old = timeit.default_timer()
@@ -63,10 +56,10 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
     for root, _, file_names in os.walk(input_directory):
 
         for file_name in file_names:
-            if not file_name.endswith(".las") and not file_name.endswith(".laz"):
+            if not file_name.endswith((".las", ".laz")):
                 continue
 
-            log.info(f"Processing : {file_name}")
+            logger.info(f"Processing : {file_name}")
             las_path = os.path.join(root, file_name)
             with laspy.open(las_path) as las_file:
                 raw_las_points = las_file.read().points
@@ -78,7 +71,7 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
 
                     time_new = timeit.default_timer()
                     delta_time = round(time_new - time_old, 2)
-                    log.info(f"Processed {file_name} (out) in {delta_time} sec")
+                    logger.info(f"Processed {file_name} (out) in {delta_time} sec")
                     time_old = time_new
                     continue
 
@@ -94,7 +87,7 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
 
                     time_new = timeit.default_timer()
                     delta_time = round(time_new - time_old, 2)
-                    log.info(f"Processed {file_name} (in) in {delta_time} sec")
+                    logger.info(f"Processed {file_name} (in) in {delta_time} sec")
                     time_old = time_new
                     continue
 
@@ -108,12 +101,12 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
 
                 time_new = timeit.default_timer()
                 delta_time = round(time_new - time_old, 2)
-                log.info(f"Processed {file_name} (cut) in {delta_time} sec")
+                logger.info(f"Processed {file_name} (cut) in {delta_time} sec")
                 time_old = time_new
 
     time_end = timeit.default_timer()
     delta_time = round(time_end - time_start, 2)
-    log.info(f"Finished processing in {delta_time} sec")
+    logger.info(f"Finished processing in {delta_time} sec")
 
 
 if __name__ == "__main__":

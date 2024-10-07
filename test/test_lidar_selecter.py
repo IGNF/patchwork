@@ -70,7 +70,7 @@ def test_select_lidar(tmp_path_factory):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"cutter.SHAPEFILE_PATH={shapefile_path}",
+                f"filepath.SHAPEFILE_PATH={shapefile_path}",
                 f"TILE_SIZE={TILE_SIZE}"
             ]
         )
