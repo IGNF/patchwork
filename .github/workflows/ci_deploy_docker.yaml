@@ -7,6 +7,10 @@ on:
   push:
     tags: [ 'v*.*.*' ]
 
+  pull_request: # TEST ONLY !
+    branches:
+      - main
+
 env:
   IMAGE_NAME:  ${{ github.repository }}
   REGISTRY: ghcr.io
