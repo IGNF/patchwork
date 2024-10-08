@@ -1,5 +1,5 @@
 
-name: cicd_deploy
+name: ci_deploy_docker
 
 on:
   # Also run when the pull request merges  (which generates a push)
