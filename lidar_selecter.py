@@ -25,13 +25,15 @@ def patchwork_dispatcher(config: DictConfig):
     select_lidar(config,
                  config.filepath.DONOR_DIRECTORY,
                  config.filepath.OUTPUT_DIRECTORY_PATH,
-                 c.DONOR_SUBDIRECTORY_NAME
+                 c.DONOR_SUBDIRECTORY_NAME,
+                 True
                  )
     # preparing recipient files:
     select_lidar(config,
                  config.filepath.RECIPIENT_DIRECTORY,
                  config.filepath.OUTPUT_DIRECTORY_PATH,
-                 c.RECIPIENT_SUBDIRECTORY_NAME
+                 c.RECIPIENT_SUBDIRECTORY_NAME,
+                 False,
                  )
 
 
@@ -40,10 +42,10 @@ def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygo
     return las_points[shapefile_contains_mask]
 
 
-def select_lidar(config: DictConfig, input_directory, output_directory, subdirectory_name):
+def select_lidar(config: DictConfig, input_directory, output_directory, subdirectory_name, to_be_cut):
     """
     Walk the input directory searching for las files, and pick the ones that intersect with the shapefile.
-    When a las file is half inside the shapfile, it is cut
+    When a las file is half inside the shapfile, it is cut if "to_be_cut" is true, otherwise it kept whole
     The results are put in: output_directory/XXXX_YYYY/subdirectory_name, where XXXX_YYYY is
     the north west corner of the file
     """
@@ -82,7 +84,7 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
                 pathlib.Path(directory_path).mkdir(parents=True, exist_ok=True)
 
                 # if intersect area == TILE_SIZE², this tile is fully inside the shapefile
-                if intersect_area >= config.TILE_SIZE * config.TILE_SIZE:
+                if intersect_area >= config.TILE_SIZE * config.TILE_SIZE or not to_be_cut:
                     shutil.copyfile(las_path, os.path.join(directory_path, file_name))
 
                     time_new = timeit.default_timer()

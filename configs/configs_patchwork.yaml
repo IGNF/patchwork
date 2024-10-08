@@ -19,15 +19,14 @@ defaults:
   - _self_
 
 filepath:
-  RECIPIENT_FILE: null
-  DONOR_FILE: null
-  OUTPUT_FILE: null
+  SHAPEFILE_PATH: null  # shapefile for lidar selecter, to determine the lidar file to select
+  DONOR_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
+  RECIPIENT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
+  OUTPUT_DIRECTORY_PATH: null # directory containing all potential donor lidar files, for lidar selecter
+  RECIPIENT_FILE: null # path to the file that receives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY_PATH
+  DONOR_FILE: null # path to the file that gives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY_PATH
+  OUTPUT_FILE: null # path to the (resulting) file with added points. 
   OUTPUT_INDICES_MAP: null
-  INPUT_INDICES_MAP: null
-  SHAPEFILE_PATH: null
-  DONOR_DIRECTORY: null
-  RECIPIENT_DIRECTORY: null
-  OUTPUT_DIRECTORY_PATH: null
 
 CRS: 2154
 
