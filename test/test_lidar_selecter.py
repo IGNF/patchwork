@@ -75,7 +75,7 @@ def test_select_lidar(tmp_path_factory):
             ]
         )
         subdirectory_name = SUBDIRECTORY_NAME
-        select_lidar(config, input_directory, output_directory, subdirectory_name)
+        select_lidar(config, input_directory, output_directory, subdirectory_name, True)
 
     output_las_path = output_directory / "0_1" / subdirectory_name / LASFILE_NAME
     with laspy.open(output_las_path) as las_file:
