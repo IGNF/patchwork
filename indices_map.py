@@ -8,6 +8,7 @@ from pandas import DataFrame
 from tools import get_tile_origin_from_pointcloud
 from constants import PATCH_X_STR, PATCH_Y_STR
 
+
 def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     """ create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
     1 if the patch has at least one point of df_points
@@ -20,7 +21,7 @@ def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
     list_coordinates_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
     list_coordinates_y = np.int32((corner_y - df_points.y) / config.PATCH_SIZE)
 
-    # edge cases where points are exactly on the... edge of the tile, but still valid 
+    # edge cases where points are exactly on the... edge of the tile, but still valid
     list_coordinates_x[list_coordinates_x == size_grid] = size_grid - 1
     list_coordinates_y[list_coordinates_y == size_grid] = size_grid - 1
 
@@ -46,6 +47,7 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
                           transform=transform)
     indices_map.write(grid, 1)
     indices_map.close()
+
 
 def read_indices_map(config: DictConfig):
     indices_map = rs.open(config.filepath.INPUT_INDICES_MAP)

@@ -9,6 +9,8 @@ dependencies:
   - numpy
   - geopandas==0.*
   - shapely>=2.0.3
+  # ------------- logging ------------- #
+  - loguru
     # --------- hydra configs --------- #
   - hydra-core
   - hydra-colorlog

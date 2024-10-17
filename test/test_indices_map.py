@@ -84,11 +84,16 @@ def test_read_indices_map(tmp_path_factory):
             [1, 1, 1],])
 
         transform = from_origin(0, 3, config.PATCH_SIZE, config.PATCH_SIZE)
-        indices_map = rs.open(config.filepath.INPUT_INDICES_MAP, 'w', driver='GTiff',
-                            height=grid.shape[0], width=grid.shape[1],
-                            count=1, dtype=str(grid.dtype),
-                            crs=config.CRS,
-                            transform=transform)
+        indices_map = rs.open(config.filepath.INPUT_INDICES_MAP,
+                              'w',
+                              driver='GTiff',
+                              height=grid.shape[0],
+                              width=grid.shape[1],
+                              count=1,
+                              dtype=str(grid.dtype),
+                              crs=config.CRS,
+                              transform=transform
+                              )
         indices_map.write(grid, 1)
         indices_map.close()
 

@@ -9,9 +9,10 @@ import pandas as pd
 import laspy
 from laspy import ScaleAwarePointRecord, LasReader
 
-from tools import get_tile_origin_from_pointcloud, crop_tile, crop_temp
-from indices_map import create_indices_map, read_indices_map
+from tools import get_tile_origin_from_pointcloud, crop_tile
+from indices_map import create_indices_map
 from constants import CLASSIFICATION_STR, PATCH_X_STR, PATCH_Y_STR
+
 
 def get_selected_classes_points(config: DictConfig,
                                 tile_origin: Tuple[int, int],
@@ -81,8 +82,18 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
                              {config.filepath.RECIPIENT_FILE} are not on the same area")
 
         donor_columns = get_field_from_header(donor_file)
-        df_donor_points = get_selected_classes_points(config, tile_origin_donor, donor_points, config.DONOR_CLASS_LIST, donor_columns)
-        df_recipient_points = get_selected_classes_points(config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, [])
+        df_donor_points = get_selected_classes_points(config,
+                                                      tile_origin_donor,
+                                                      donor_points,
+                                                      config.DONOR_CLASS_LIST,
+                                                      donor_columns
+                                                      )
+        df_recipient_points = get_selected_classes_points(config,
+                                                          tile_origin_recipient,
+                                                          recipient_points,
+                                                          config.RECIPIENT_CLASS_LIST,
+                                                          []
+                                                          )
 
         # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
         # should have no record for when count == 0, therefore "df_recipient_non_empty_patches" list all
@@ -111,7 +122,7 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
     return [dimension.name.lower() for dimension in header.point_format.dimensions]
 
 
-def test_field_exists(file_path:str, colmun:str) -> bool:
+def test_field_exists(file_path: str, colmun: str) -> bool:
     output_file = laspy.read(file_path)
     return colmun in get_field_from_header(output_file)
 
@@ -173,10 +184,6 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
 
 def patchwork(config: DictConfig):
-    crop_temp()
-
-    # if config.filepath.INPUT_INDICES_MAP:
-    #     read_indices_map(config)
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
     create_indices_map(config, complementary_bd_points)
