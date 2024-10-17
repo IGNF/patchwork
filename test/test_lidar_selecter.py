@@ -5,10 +5,13 @@ from hydra import compose, initialize
 from shapely.geometry import MultiPolygon
 import numpy as np
 import geopandas as gpd
+from pandas import DataFrame
+
+import constants as c
 
 sys.path.append('../patchwork')
 
-from lidar_selecter import cut_lidar, select_lidar
+from lidar_selecter import cut_lidar, select_lidar, update_df_result
 
 
 CRS = 2154
@@ -66,6 +69,13 @@ def test_select_lidar(tmp_path_factory):
     # create output directory
     output_directory = las_path = tmp_path_factory.mktemp(OUTPUT_DIRECTORY)
 
+    # create teh dataframe (to put the result in)
+    data = {c.COORDINATES_KEY: [],
+            c.DONOR_FILE_KEY: [],
+            c.RECIPIENT_FILE_KEY: []
+            }
+    df_result = DataFrame(data=data)
+
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
@@ -75,9 +85,9 @@ def test_select_lidar(tmp_path_factory):
             ]
         )
         subdirectory_name = SUBDIRECTORY_NAME
-        select_lidar(config, input_directory, output_directory, subdirectory_name, True)
+        select_lidar(config, input_directory, output_directory, subdirectory_name,df_result, c.DONOR_FILE_KEY, True)
 
-    output_las_path = output_directory / "0_1" / subdirectory_name / LASFILE_NAME
+    output_las_path = output_directory / subdirectory_name / LASFILE_NAME
     with laspy.open(output_las_path) as las_file:
         raw_las_points = las_file.read().points
         x = raw_las_points.x
@@ -90,3 +100,21 @@ def test_select_lidar(tmp_path_factory):
         assert POINT_INSIDE_2 in las_points_list
         assert POINT_OUTSIDE_1 not in las_points_list
         assert POINT_OUTSIDE_2 not in las_points_list
+
+
+def test_update_df_result():
+    data = {c.COORDINATES_KEY: [],
+            c.DONOR_FILE_KEY: [],
+            c.RECIPIENT_FILE_KEY: []
+            }
+    df_result = DataFrame(data=data)
+    corner_string = "1111_2222"
+    donor_path = "dummy_path_1"
+    df_result = update_df_result(df_result, c.DONOR_FILE_KEY, corner_string, donor_path)
+    recipient_path = "dummy_path_2"
+    df_result = update_df_result(df_result, c.RECIPIENT_FILE_KEY, corner_string, recipient_path)
+    assert len(df_result) == 1
+    row_0 = df_result.loc[0]
+    assert row_0[c.COORDINATES_KEY] == corner_string
+    assert row_0[c.DONOR_FILE_KEY] == donor_path
+    assert row_0[c.RECIPIENT_FILE_KEY] == recipient_path

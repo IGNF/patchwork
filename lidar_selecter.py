@@ -1,7 +1,5 @@
 import os
-import shutil
 import pathlib
-# import logging
 import timeit
 
 import hydra
@@ -11,6 +9,7 @@ import laspy
 from laspy import ScaleAwarePointRecord
 from shapely import box
 import numpy as np
+from pandas import DataFrame
 from shapely.geometry import MultiPolygon
 from shapely.vectorized import contains
 from loguru import logger
@@ -21,11 +20,18 @@ from tools import identify_bounds, get_tile_origin_from_pointcloud, crop_tile
 
 @hydra.main(config_path="configs/", config_name="configs_patchwork.yaml", version_base="1.2")
 def patchwork_dispatcher(config: DictConfig):
+    data = {c.COORDINATES_KEY: [],
+            c.DONOR_FILE_KEY: [],
+            c.RECIPIENT_FILE_KEY: []
+            }
+    df_result = DataFrame(data=data)
     # preparing donor files:
     select_lidar(config,
                  config.filepath.DONOR_DIRECTORY,
                  config.filepath.OUTPUT_DIRECTORY_PATH,
                  c.DONOR_SUBDIRECTORY_NAME,
+                 df_result,
+                 c.DONOR_FILE_KEY,
                  True
                  )
     # preparing recipient files:
@@ -33,8 +39,12 @@ def patchwork_dispatcher(config: DictConfig):
                  config.filepath.RECIPIENT_DIRECTORY,
                  config.filepath.OUTPUT_DIRECTORY_PATH,
                  c.RECIPIENT_SUBDIRECTORY_NAME,
+                 df_result,
+                 c.RECIPIENT_FILE_KEY,
                  False,
                  )
+    
+    df_result.to_csv(config.filepath.CSV_PATH, index=False) 
 
 
 def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygon) -> ScaleAwarePointRecord:
@@ -42,12 +52,34 @@ def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygo
     return las_points[shapefile_contains_mask]
 
 
-def select_lidar(config: DictConfig, input_directory, output_directory, subdirectory_name, to_be_cut):
+def update_df_result(df_result: DataFrame, df_key: str, corner_string: str, file_path: str):
+
+    mask_corner_string = df_result[c.COORDINATES_KEY] == corner_string
+
+    # corner_string not yet in df_result
+    if True not in mask_corner_string.value_counts():
+        new_row = {c.COORDINATES_KEY:corner_string, c.DONOR_FILE_KEY: "", c.RECIPIENT_FILE_KEY:""}
+        new_row[df_key] = file_path
+        df_result.loc[len(df_result)] = new_row
+        return df_result
+
+    # corner_string already in df_result
+    df_result.loc[mask_corner_string, df_key] = file_path
+    return df_result
+
+
+def select_lidar(config: DictConfig,
+                 input_directory:str,
+                 output_directory:str,
+                 subdirectory_name: str,
+                 df_result:DataFrame,
+                 df_key: str,
+                 to_be_cut: bool):
     """
     Walk the input directory searching for las files, and pick the ones that intersect with the shapefile.
     When a las file is half inside the shapfile, it is cut if "to_be_cut" is true, otherwise it kept whole
-    The results are put in: output_directory/XXXX_YYYY/subdirectory_name, where XXXX_YYYY is
-    the north west corner of the file
+    If a file is cut, the cut file is put in: output_directory/subdirectory_name
+    Finally, df_result is updated with the path for each file
     """
 
     worksite = gpd.GeoDataFrame.from_file(config.filepath.SHAPEFILE_PATH)
@@ -77,16 +109,17 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
                     time_old = time_new
                     continue
 
-                las_points = crop_tile(config, raw_las_points)
-                x_corner, y_corner = get_tile_origin_from_pointcloud(config, las_points)
-                corner_string = f"{int(x_corner/1000)}_{int(y_corner/1000)}"
-                directory_path = os.path.join(output_directory, corner_string, subdirectory_name)
+                directory_path = os.path.join(output_directory, subdirectory_name)
                 pathlib.Path(directory_path).mkdir(parents=True, exist_ok=True)
 
+                las_points = crop_tile(config, raw_las_points)
+                x_corner, y_corner = get_tile_origin_from_pointcloud(config, las_points)
+
+                corner_string = f"{int(x_corner/1000)}_{int(y_corner/1000)}"
                 # if intersect area == TILE_SIZE², this tile is fully inside the shapefile
                 if intersect_area >= config.TILE_SIZE * config.TILE_SIZE or not to_be_cut:
-                    shutil.copyfile(las_path, os.path.join(directory_path, file_name))
 
+                    df_result = update_df_result(df_result, df_key, corner_string, las_path)
                     time_new = timeit.default_timer()
                     delta_time = round(time_new - time_old, 2)
                     logger.info(f"Processed {file_name} (in) in {delta_time} sec")
@@ -101,6 +134,7 @@ def select_lidar(config: DictConfig, input_directory, output_directory, subdirec
                 with laspy.open(cut_las_path, mode="w", header=las_file.header) as writer:
                     writer.write_points(points_in_geometry)
 
+                df_result = update_df_result(df_result, df_key, corner_string, cut_las_path)
                 time_new = timeit.default_timer()
                 delta_time = round(time_new - time_old, 2)
                 logger.info(f"Processed {file_name} (cut) in {delta_time} sec")

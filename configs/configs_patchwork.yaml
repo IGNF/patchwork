@@ -26,9 +26,9 @@ filepath:
   RECIPIENT_FILE: null # path to the file that receives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY_PATH
   DONOR_FILE: null # path to the file that gives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY_PATH
   OUTPUT_FILE: null # path to the (resulting) file with added points. 
-  INPUT_INDICES_MAP: null # path for the indices map refelcting the changes to the recipient file
+  INPUT_INDICES_MAP: null # path for the indices map reflecting the changes to the recipient
   OUTPUT_INDICES_MAP: null
-
+  CSV_PATH: null # path to the csv file that log the lidar files to process with patchwork
 
 CRS: 2154
 
