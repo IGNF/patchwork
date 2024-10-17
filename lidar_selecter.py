@@ -53,18 +53,15 @@ def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygo
 
 
 def update_df_result(df_result: DataFrame, df_key: str, corner_string: str, file_path: str):
-
-    mask_corner_string = df_result[c.COORDINATES_KEY] == corner_string
-
     # corner_string not yet in df_result
-    if True not in mask_corner_string.value_counts():
+    if not corner_string in list(df_result[c.COORDINATES_KEY]):
         new_row = {c.COORDINATES_KEY:corner_string, c.DONOR_FILE_KEY: "", c.RECIPIENT_FILE_KEY:""}
         new_row[df_key] = file_path
         df_result.loc[len(df_result)] = new_row
         return df_result
 
     # corner_string already in df_result
-    df_result.loc[mask_corner_string, df_key] = file_path
+    df_result.loc[df_result[c.COORDINATES_KEY] == corner_string, df_key] = file_path
     return df_result
 
 
