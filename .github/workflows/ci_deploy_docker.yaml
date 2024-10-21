@@ -26,7 +26,7 @@ jobs:
 
     - name: Set version number
       run: |
-        echo "VERSION=v$(python -m patchwork.version)" >> $GITHUB_ENV
+        echo "VERSION=v$(python -m version)" >> $GITHUB_ENV
 
     - name: Check tag and version number consistency
       if: ${{ github.event_name == 'tag' }}
