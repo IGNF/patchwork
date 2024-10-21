@@ -5,7 +5,7 @@ on:
   push:
     # Run deployment on every new version tag and every push to main
     branches: [ "main" ]
-    tags: [ '*.*.*' ]
+    tags: [ 'v*.*.*' ]
 
 env:
   IMAGE_NAME:  ${{ github.repository }}
