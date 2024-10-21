@@ -5,6 +5,7 @@ on:
   # Also run when the pull request merges  (which generates a push)
   # So that we can tag the docker image appropriately.
   push:
+    branches: [ "main" ]
     tags: [ '*.*.*' ]
 
 env:
