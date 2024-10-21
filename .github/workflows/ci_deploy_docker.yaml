@@ -2,10 +2,11 @@
 name: ci_deploy_docker
 
 on:
-  # Also run when the pull request merges  (which generates a push)
-  # So that we can tag the docker image appropriately.
+  # Also run when the pull request so that we can tag the docker image appropriately.
+  pull_request:
+    branches:
+      - main
   push:
-    branches: [ "main" ]
     tags: [ '*.*.*' ]
 
 env:
