@@ -30,7 +30,8 @@ jobs:
         echo "VERSION=v$(python -m version)" >> $GITHUB_ENV
 
     - name: Check tag and version number consistency
-      if: ${{ github.event_name == 'tag' }}
+      if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+      # if: ${{ github.event_name == 'tag' }}
       run: |
         if [[ ${{ github.ref_name }} == ${{ env.VERSION }} ]]
         then
