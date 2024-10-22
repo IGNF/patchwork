@@ -5,7 +5,8 @@ on:
   push:
     # Run deployment on every new version tag and every push to main
     branches: [ "main" ]
-    tags: [ 'v*.*.*' ]
+    tags: 
+      - v*.*.*
 
 env:
   IMAGE_NAME:  ${{ github.repository }}
@@ -33,9 +34,9 @@ jobs:
       run: |
         if [[ ${{ github.ref_name }} == ${{ env.VERSION }} ]]
         then
-        echo "OK: Tag name and CHANGELOG.md (${{ env.VERSION }}) version number (${{ github.ref_name }}) match"
+        echo "OK: Tag name and version.py (${{ env.VERSION }}) version number (${{ github.ref_name }}) match"
         else
-        echo "NOK: Tag name and CHANGELOG.md (${{ env.VERSION }}) version number (${{ github.ref_name }}) don't match"
+        echo "NOK: Tag name and version.py (${{ env.VERSION }}) version number (${{ github.ref_name }}) don't match"
         exit 1
         fi     
 
