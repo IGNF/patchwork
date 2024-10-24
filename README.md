@@ -47,8 +47,8 @@ Le script de sélection/découpe de fichier lidar peut être lancé via :
 python lidar_filepath.py filepath.DONOR_DIRECTORY=[répertoire_fichiers_donneurs] filepath.RECIPIENT_DIRECTORY=[répertoire_fichiers_receveurs] filepath.SHP_NAME=[nom_shapefile] filepath.SHP_DIRECTORY=[répertoire_shapefile] filepath.CSV_NAME=[nom_fichier_csv] filepath.CSV_DIRECTORY=[répertoire_fichier_csv] filepath.OUTPUT_DIRECTORY=[chemin_de_sortie]
 ```
 
-filepath.DONOR_DIRECTORY: The directory containing all the lidar files that could provide points  
-filepath.RECIPIENT_DIRECTORY: The directory containing all the lidar files that could receive points  
+filepath.DONOR_DIRECTORY: Le répertoire contenant les fichiers lidar donneurs  
+filepath.RECIPIENT_DIRECTORY: Le répertoire contenant les fichiers lidar receveurs  
 filepath.SHP_NAME: Le nom du shapefile contenant l'emprise du chantier qui délimite les fichiers lidar qui nous intéressent  
 filepath.SHP_DIRECTORY: Le répertoire du fichier shapefile  
 filepath.CSV_NAME: Le nom du fichier csv qui lie les différents fichiers donneurs et receveurs  
