@@ -5,11 +5,13 @@ from hydra import compose, initialize
 import laspy
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 
 sys.path.append('../patchwork')
 
+import constants as c
 from patchwork import get_complementary_points, get_field_from_header, get_selected_classes_points
-from patchwork import get_type, append_points
+from patchwork import get_type, append_points, get_donor_from_csv
 from tools import get_tile_origin_from_pointcloud
 from constants import CLASSIFICATION_STR
 
@@ -29,6 +31,9 @@ RECIPIENT_MORE_FIELDS_TEST_PATH = "test/data/recipient_more_fields_test.laz"
 DONOR_MORE_FIELDS_TEST_PATH = "test/data/donor_more_fields_test.las"
 
 RECIPIENT_SLIDED_TEST_PATH = "test/data/recipient_slided_test.laz"
+
+COORDINATES = "1234_6789"
+
 
 
 def test_get_field_from_header():
@@ -233,3 +238,14 @@ def test_append_points_new_column(tmp_path_factory):
         assert new_column[-1] == VALUE_ADDED_POINTS
         assert new_column[-2] == VALUE_ADDED_POINTS
         assert max(new_column[:-2]) == 0
+
+def test_get_donor_from_csv(tmp_path_factory):
+    csv_file_path = tmp_path_factory.mktemp("csv") / "recipients_donors_links.csv"
+    data = {c.COORDINATES_KEY: [COORDINATES, ],
+            c.DONOR_FILE_KEY: [DONOR_MORE_FIELDS_TEST_PATH, ],
+            c.RECIPIENT_FILE_KEY: [RECIPIENT_MORE_FIELDS_TEST_PATH, ]
+            }
+    DataFrame(data=data).to_csv(csv_file_path)
+
+    donor_file_path = get_donor_from_csv(RECIPIENT_MORE_FIELDS_TEST_PATH, csv_file_path)
+    assert donor_file_path == DONOR_MORE_FIELDS_TEST_PATH

@@ -1,6 +1,7 @@
 
 from shutil import copy2
 from typing import List, Tuple
+import os
 
 from omegaconf import DictConfig
 
@@ -9,6 +10,7 @@ import pandas as pd
 import laspy
 from laspy import ScaleAwarePointRecord, LasReader
 
+import constants as c
 from tools import get_tile_origin_from_pointcloud, crop_tile
 from indices_map import create_indices_map
 from constants import CLASSIFICATION_STR, PATCH_X_STR, PATCH_Y_STR
@@ -183,7 +185,28 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
         output_las.append_points(new_points)
 
 
+def get_donor_from_csv(recipient_file_path:str, csv_file_path:str)-> str:
+    """
+    check if there is a donor file, in the csv file, matching the recipient file
+    return the path to that file if it exists
+    return "" otherwise
+    """
+    df_csv_data = pd.read_csv(csv_file_path)
+    donor_file_paths = df_csv_data.loc[df_csv_data[c.RECIPIENT_FILE_KEY] == recipient_file_path, c.DONOR_FILE_KEY]
+    if len(donor_file_paths) > 0:
+        return donor_file_paths.loc[0] # there should be only one donor file for a given recipient file
+    return ""
+
 def patchwork(config: DictConfig):
+
+    # if there is a csv_file, we don't use the DONOR_FILE defined by the config but
+    # the file matching the recipinet file from the csv file
+    if config.filepath.CSV_DIRECTORY and config.filepath.CSV_NAME :
+        csv_file_path = os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME)
+        config.filepath.DONOR_FILE = get_donor_from_csv(config.filepath.RECIPIENT_FILE, csv_file_path)
+        if not config.filepath.DONOR_FILE: # if the re is no matching donor file, we do nothing
+            return 
+
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
     create_indices_map(config, complementary_bd_points)
