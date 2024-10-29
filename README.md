@@ -32,11 +32,15 @@ python main.py filepath.DONOR_FILE=[chemin fichier donneur] filepath.RECIPIENT_F
 ```
 Les différentes options, modifiables soit dans le fichierconfigs/configs_patchwork.yaml, soit en ligne de commande comme indiqué juste au-dessus :  
     
-filepath.DONOR_FILE : Le chemin du fichier qui peut donner des points à ajouter  
-filepath.RECIPIENT_FILE : Le chemin du fichier qui va obtenir des points en plus  
-filepath.OUTPUT_FILE : Le chemin du fichier en sortie  
-filepath.OUTPUT_INDICES_MAP : Le chemin de sortie du fichier d'indice  
-filepath.INPUT_INDICES_MAP : Le chemin vers le fichier d'indice en entrée, si on en a un. Autrement, à laisser à "null"  
+filepath.DONOR_DIRECTORY : Le répertoire du fichier qui peut donner des points à ajouter  
+filepath.DONOR_NAME : Le nom du fichier qui peut donner des points à ajouter  
+filepath.RECIPIENT_DIRECTORY : Le répertoire du fichier qui va obtenir des points en plus  
+filepath.RECIPIENT_NAME : Le nom du fichier qui va obtenir des points en plus  
+filepath.OUTPUT_DIR : Le répertoire du fichier en sortie  
+filepath.OUTPUT_NAME : Le nom du fichier en sortie  
+filepath.OUTPUT_INDICES_MAP_DIR : Le répertoire de sortie du fichier d'indice  
+filepath.OUTPUT_INDICES_MAP_NAME : Le nom de sortie du fichier d'indice  
+
 DONOR_CLASS_LIST : Défaut [2, 9]. La liste des classes des points du fichier donneur qui peuvent être ajoutés.  
 RECIPIENT_CLASS_LIST : Défaut [2, 3, 9, 17]. La liste des classes des points du fichier receveur qui, s'ils sont absents dans une cellule, justifirons de prendre les points du fichier donneur de la même cellule
 TILE_SIZE : Défaut 1000. Taille du côté de l'emprise carrée représentée par les fichiers lidar d'entrée

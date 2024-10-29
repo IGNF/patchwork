@@ -24,14 +24,23 @@ filepath:
   DONOR_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
   RECIPIENT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
   OUTPUT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
-  RECIPIENT_FILE: null # path to the file that receives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY
-  DONOR_FILE: null # path to the file that gives points. If done after lidar selecter, is in a subdirectory of OUTPUT_DIRECTORY
-  OUTPUT_FILE: null # path to the (resulting) file with added points. 
-  INPUT_INDICES_MAP: null # path for the indices map reflecting the changes to the recipient
-  OUTPUT_INDICES_MAP: null
+
+  # OUTPUT_FILE: null # path to the (resulting) file with added points.
+  OUTPUT_DIR: null # directory of the file with added points, from patchwork.
+  OUTPUT_NAME: null # name of the file with added points, from patchwork.
+ 
+  INPUT_INDICES_MAP_DIR: null
+  INPUT_INDICES_MAP_NAME: null
+
+  OUTPUT_INDICES_MAP_DIR: null # path to the directory for the indices map reflecting the changes to the recipient, from patchwork
+  OUTPUT_INDICES_MAP_NAME: null # name of the indices map reflecting the changes to the recipient, from patchwork
+
   # INPUT_DIRECTORY: null # directory for input (shapefile) 
   CSV_NAME: null # name of the csv file that log the lidar files to process with patchwork
   CSV_DIRECTORY: null # path to the directory that will contain the csv
+
+  DONOR_NAME: null # name of the donor file for patchwork
+  RECIPIENT_NAME: null # name of the recipient file for patchwork
   
 
 

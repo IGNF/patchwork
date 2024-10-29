@@ -1,4 +1,5 @@
 import sys
+import os
 
 from hydra import compose, initialize
 import numpy as np
@@ -41,20 +42,23 @@ def test_create_indices_points():
 
 
 def test_create_indices_map(tmp_path_factory):
-    tmp_file_path = tmp_path_factory.mktemp("data") / "indices.tif"
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_file_name = "indices.tif"
+
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
                 f"PATCH_SIZE={PATCH_SIZE}",
                 f"TILE_SIZE={TILE_SIZE}",
-                f"filepath.OUTPUT_INDICES_MAP={tmp_file_path}",
+                f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_file_name}",
             ]
         )
 
         df_points = pd.DataFrame(data=DATA_POINTS)
         create_indices_map(config, df_points)
-        raster = rs.open(tmp_file_path)
+        raster = rs.open(os.path.join(tmp_file_dir, tmp_file_name))
         grid = raster.read()
 
         grid = grid.transpose()  # indices aren't read the way we want otherwise
@@ -66,7 +70,8 @@ def test_create_indices_map(tmp_path_factory):
 
 
 def test_read_indices_map(tmp_path_factory):
-    tmp_file_path = tmp_path_factory.mktemp("data") / "indices.tif"
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_file_name = "indices.tif"
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
@@ -74,7 +79,8 @@ def test_read_indices_map(tmp_path_factory):
             overrides=[
                 f"PATCH_SIZE={PATCH_SIZE}",
                 f"TILE_SIZE={TILE_SIZE}",
-                f"filepath.INPUT_INDICES_MAP={tmp_file_path}",
+                f"filepath.INPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.INPUT_INDICES_MAP_NAME={tmp_file_name}",
             ]
         )
 
@@ -84,7 +90,8 @@ def test_read_indices_map(tmp_path_factory):
             [1, 1, 1],])
 
         transform = from_origin(0, 3, config.PATCH_SIZE, config.PATCH_SIZE)
-        indices_map = rs.open(config.filepath.INPUT_INDICES_MAP,
+        output_indices_map_path = os.path.join(config.filepath.INPUT_INDICES_MAP_DIR, config.filepath.INPUT_INDICES_MAP_NAME)
+        indices_map = rs.open(output_indices_map_path,
                               'w',
                               driver='GTiff',
                               height=grid.shape[0],

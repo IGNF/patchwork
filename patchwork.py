@@ -2,6 +2,7 @@
 from shutil import copy2
 from typing import List, Tuple
 import os
+from pathlib import Path
 
 from omegaconf import DictConfig
 
@@ -69,8 +70,12 @@ def get_type(new_column_size: int):
 
 
 def get_complementary_points(config: DictConfig) -> pd.DataFrame:
-    with laspy.open(config.filepath.DONOR_FILE) as donor_file, \
-            laspy.open(config.filepath.RECIPIENT_FILE) as recipient_file:
+    donor_dir, donor_name = get_donor_path(config)
+    donor_file_path = os.path.join(donor_dir, donor_name)
+    recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+
+    with laspy.open(donor_file_path) as donor_file, \
+            laspy.open(recipient_file_path) as recipient_file:
         raw_donor_points = donor_file.read().points
         donor_points = crop_tile(config, raw_donor_points)
         raw_recipient_points = recipient_file.read().points
@@ -80,8 +85,8 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
         tile_origin_donor = get_tile_origin_from_pointcloud(config, donor_points)
         tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
         if tile_origin_donor != tile_origin_recipient:
-            raise ValueError(f"{config.filepath.DONOR_FILE} and \
-                             {config.filepath.RECIPIENT_FILE} are not on the same area")
+            raise ValueError(f"{donor_file_path} and \
+                             {recipient_file_path} are not on the same area")
 
         donor_columns = get_field_from_header(donor_file)
         df_donor_points = get_selected_classes_points(config,
@@ -131,8 +136,8 @@ def test_field_exists(file_path: str, colmun: str) -> bool:
 
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
     # get field to copy :
-    recipient_filepath = config.filepath.RECIPIENT_FILE
-    ouput_filepath = config.filepath.OUTPUT_FILE
+    recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+    ouput_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)    
     with laspy.open(recipient_filepath) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
 
@@ -156,9 +161,9 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     # if we want a new column, we start by adding its name
     if config.NEW_COLUMN:
-        if test_field_exists(config.filepath.RECIPIENT_FILE, config.NEW_COLUMN):
+        if test_field_exists(recipient_filepath, config.NEW_COLUMN):
             raise ValueError(f"{config.NEW_COLUMN} already exists as \
-                             column name in {config.filepath.RECIPIENT_FILE}")
+                             column name in {recipient_filepath}")
         new_column_type = get_type(config.NEW_COLUMN_SIZE)
         output_las = laspy.read(ouput_filepath)
         output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
@@ -197,15 +202,26 @@ def get_donor_from_csv(recipient_file_path:str, csv_file_path:str)-> str:
         return donor_file_paths.loc[0] # there should be only one donor file for a given recipient file
     return ""
 
-def patchwork(config: DictConfig):
 
-    # if there is a csv_file, we don't use the DONOR_FILE defined by the config but
-    # the file matching the recipinet file from the csv file
+def get_donor_path(config: DictConfig) -> Tuple[str, str]:
+    """Return a donor directory and a name:
+    If there is no csv file provided in config, return  DONOR_DIRECTORY and DONOR_NAME
+    if there is a csv file provided, return DONOR_DIRECTORY and DONOR_NAME matching the given RECIPIENT
+    if there is a csv file provided but no matching DONOR, return "" twice """
     if config.filepath.CSV_DIRECTORY and config.filepath.CSV_NAME :
         csv_file_path = os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME)
-        config.filepath.DONOR_FILE = get_donor_from_csv(config.filepath.RECIPIENT_FILE, csv_file_path)
-        if not config.filepath.DONOR_FILE: # if the re is no matching donor file, we do nothing
-            return 
+        recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        donor_file_path = get_donor_from_csv(recipient_file_path, csv_file_path)
+        if not donor_file_path: # if there is no matching donor file, we do nothing
+            return "", ""
+        return str(Path(donor_file_path).parent), str(Path(donor_file_path).name)
+    return config.filepath.DONOR_DIRECTORY, config.filepath.DONOR_NAME
+
+
+def patchwork(config: DictConfig):
+    _, donor_name = get_donor_path(config)
+    if not donor_name:
+        return
 
     complementary_bd_points = get_complementary_points(config)
     append_points(config, complementary_bd_points)
