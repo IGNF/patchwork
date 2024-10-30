@@ -220,7 +220,10 @@ def get_donor_path(config: DictConfig) -> Tuple[str, str]:
 
 def patchwork(config: DictConfig):
     _, donor_name = get_donor_path(config)
-    if not donor_name:
+    if not donor_name: # if no matching donor, we simply copy the recipient to the output without doing anything
+        recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        ouput_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME) 
+        copy2(recipient_filepath, ouput_filepath)
         return
 
     complementary_bd_points = get_complementary_points(config)
