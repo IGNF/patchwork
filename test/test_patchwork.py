@@ -347,11 +347,3 @@ def test_get_donor_path(tmp_path_factory):
         donor_dir, donor_name = get_donor_path(config)
         assert donor_dir == DONOR_MORE_FIELDS_TEST_DIR
         assert donor_name == DONOR_MORE_FIELDS_TEST_NAME
-
-    # donor_more_fields_test_path = os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME)
-    # recipient_more_fields_test_path = os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)
-    # data = {c.COORDINATES_KEY: [COORDINATES, ],
-    #         c.DONOR_FILE_KEY: [donor_more_fields_test_path, ],
-    #         c.RECIPIENT_FILE_KEY: [recipient_more_fields_test_path, ]
-    #         }
-    # DataFrame(data=data).to_csv(csv_file_path)
