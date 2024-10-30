@@ -46,7 +46,10 @@ def test_cut_lidar():
 
 def test_select_lidar(tmp_path_factory):
     # shapefile creation
-    shapefile_path = tmp_path_factory.mktemp("shapefile") / "shapefile.shp"
+    shp_dir = tmp_path_factory.mktemp("shapefile")
+    shp_name = "shapefile.shp"
+    shapefile_path = shp_dir / shp_name
+
     shapefile_geometry = MultiPolygon([([SHAPE_CORNER_1, SHAPE_CORNER_2, SHAPE_CORNER_3],),])
     gpd_shapefile_geometry = gpd.GeoDataFrame({'geometry': [shapefile_geometry]}, crs=CRS)
     gpd_shapefile_geometry.to_file(shapefile_path)
@@ -80,7 +83,8 @@ def test_select_lidar(tmp_path_factory):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.SHAPEFILE_PATH={shapefile_path}",
+                f"filepath.SHP_DIRECTORY={shp_dir}",
+                f"filepath.SHP_NAME={shp_name}",
                 f"TILE_SIZE={TILE_SIZE}"
             ]
         )

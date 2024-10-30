@@ -1,3 +1,5 @@
+import os 
+
 import numpy as np
 from omegaconf import DictConfig
 import rasterio as rs
@@ -38,9 +40,10 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
     grid = create_indices_grid(config, df_points)
+    output_indices_map_path = os.path.join(config.filepath.OUTPUT_INDICES_MAP_DIR, config.filepath.OUTPUT_INDICES_MAP_NAME)
 
     transform = from_origin(corner_x, corner_y, config.PATCH_SIZE, config.PATCH_SIZE)
-    indices_map = rs.open(config.filepath.OUTPUT_INDICES_MAP, 'w', driver='GTiff',
+    indices_map = rs.open(output_indices_map_path, 'w', driver='GTiff',
                           height=grid.shape[0], width=grid.shape[1],
                           count=1, dtype=str(grid.dtype),
                           crs=config.CRS,
@@ -50,7 +53,7 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
 
 
 def read_indices_map(config: DictConfig):
-    indices_map = rs.open(config.filepath.INPUT_INDICES_MAP)
+    indices_map = rs.open(os.path.join(config.filepath.INPUT_INDICES_MAP_DIR, config.filepath.INPUT_INDICES_MAP_NAME))
     transformer = indices_map.get_transform()
     grid = indices_map.read()
     grid = grid[0]

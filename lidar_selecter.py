@@ -28,7 +28,7 @@ def patchwork_dispatcher(config: DictConfig):
     # preparing donor files:
     select_lidar(config,
                  config.filepath.DONOR_DIRECTORY,
-                 config.filepath.OUTPUT_DIRECTORY_PATH,
+                 config.filepath.OUTPUT_DIRECTORY,
                  c.DONOR_SUBDIRECTORY_NAME,
                  df_result,
                  c.DONOR_FILE_KEY,
@@ -37,14 +37,13 @@ def patchwork_dispatcher(config: DictConfig):
     # preparing recipient files:
     select_lidar(config,
                  config.filepath.RECIPIENT_DIRECTORY,
-                 config.filepath.OUTPUT_DIRECTORY_PATH,
+                 config.filepath.OUTPUT_DIRECTORY,
                  c.RECIPIENT_SUBDIRECTORY_NAME,
                  df_result,
                  c.RECIPIENT_FILE_KEY,
                  False,
                  )
-    
-    df_result.to_csv(config.filepath.CSV_PATH, index=False) 
+    df_result.to_csv(os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False) 
 
 
 def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygon) -> ScaleAwarePointRecord:
@@ -79,7 +78,7 @@ def select_lidar(config: DictConfig,
     Finally, df_result is updated with the path for each file
     """
 
-    worksite = gpd.GeoDataFrame.from_file(config.filepath.SHAPEFILE_PATH)
+    worksite = gpd.GeoDataFrame.from_file(os.path.join(config.filepath.SHP_DIRECTORY, config.filepath.SHP_NAME))
     shapefile_geometry = worksite.dissolve().geometry.item()
 
     time_old = timeit.default_timer()
