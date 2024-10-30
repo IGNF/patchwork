@@ -25,7 +25,6 @@ filepath:
   RECIPIENT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
   OUTPUT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
 
-  # OUTPUT_FILE: null # path to the (resulting) file with added points.
   OUTPUT_DIR: null # directory of the file with added points, from patchwork.
   OUTPUT_NAME: null # name of the file with added points, from patchwork.
  
