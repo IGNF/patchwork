@@ -3,7 +3,7 @@ import time
 import hydra
 from omegaconf import DictConfig
 
-from patchwork import patchwork
+from patchwork.patchwork import patchwork
 
 
 @hydra.main(config_path="configs/", config_name="configs_patchwork.yaml", version_base="1.2")

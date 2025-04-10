@@ -2,59 +2,58 @@ import os
 import pathlib
 import timeit
 
-import hydra
-from omegaconf import DictConfig
 import geopandas as gpd
+import hydra
 import laspy
-from laspy import ScaleAwarePointRecord
-from shapely import box
 import numpy as np
+from laspy import ScaleAwarePointRecord
+from loguru import logger
+from omegaconf import DictConfig
 from pandas import DataFrame
+from shapely import box
 from shapely.geometry import MultiPolygon
 from shapely.vectorized import contains
-from loguru import logger
 
-import constants as c
-from tools import identify_bounds, get_tile_origin_from_pointcloud, crop_tile
+import patchwork.constants as c
+from patchwork.tools import crop_tile, get_tile_origin_from_pointcloud, identify_bounds
 
 
-@hydra.main(config_path="configs/", config_name="configs_patchwork.yaml", version_base="1.2")
+@hydra.main(config_path="../configs/", config_name="configs_patchwork.yaml", version_base="1.2")
 def patchwork_dispatcher(config: DictConfig):
-    data = {c.COORDINATES_KEY: [],
-            c.DONOR_FILE_KEY: [],
-            c.RECIPIENT_FILE_KEY: []
-            }
+    data = {c.COORDINATES_KEY: [], c.DONOR_FILE_KEY: [], c.RECIPIENT_FILE_KEY: []}
     df_result = DataFrame(data=data)
     # preparing donor files:
-    select_lidar(config,
-                 config.filepath.DONOR_DIRECTORY,
-                 config.filepath.OUTPUT_DIRECTORY,
-                 c.DONOR_SUBDIRECTORY_NAME,
-                 df_result,
-                 c.DONOR_FILE_KEY,
-                 True
-                 )
+    select_lidar(
+        config,
+        config.filepath.DONOR_DIRECTORY,
+        config.filepath.OUTPUT_DIRECTORY,
+        c.DONOR_SUBDIRECTORY_NAME,
+        df_result,
+        c.DONOR_FILE_KEY,
+        True,
+    )
     # preparing recipient files:
-    select_lidar(config,
-                 config.filepath.RECIPIENT_DIRECTORY,
-                 config.filepath.OUTPUT_DIRECTORY,
-                 c.RECIPIENT_SUBDIRECTORY_NAME,
-                 df_result,
-                 c.RECIPIENT_FILE_KEY,
-                 False,
-                 )
-    df_result.to_csv(os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False) 
+    select_lidar(
+        config,
+        config.filepath.RECIPIENT_DIRECTORY,
+        config.filepath.OUTPUT_DIRECTORY,
+        c.RECIPIENT_SUBDIRECTORY_NAME,
+        df_result,
+        c.RECIPIENT_FILE_KEY,
+        False,
+    )
+    df_result.to_csv(os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False)
 
 
 def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygon) -> ScaleAwarePointRecord:
-    shapefile_contains_mask = contains(shapefile_geometry, np.array(las_points['x']), np.array(las_points['y']))
+    shapefile_contains_mask = contains(shapefile_geometry, np.array(las_points["x"]), np.array(las_points["y"]))
     return las_points[shapefile_contains_mask]
 
 
 def update_df_result(df_result: DataFrame, df_key: str, corner_string: str, file_path: str):
     # corner_string not yet in df_result
-    if not corner_string in list(df_result[c.COORDINATES_KEY]):
-        new_row = {c.COORDINATES_KEY:corner_string, c.DONOR_FILE_KEY: "", c.RECIPIENT_FILE_KEY:""}
+    if corner_string not in list(df_result[c.COORDINATES_KEY]):
+        new_row = {c.COORDINATES_KEY: corner_string, c.DONOR_FILE_KEY: "", c.RECIPIENT_FILE_KEY: ""}
         new_row[df_key] = file_path
         df_result.loc[len(df_result)] = new_row
         return df_result
@@ -64,13 +63,15 @@ def update_df_result(df_result: DataFrame, df_key: str, corner_string: str, file
     return df_result
 
 
-def select_lidar(config: DictConfig,
-                 input_directory:str,
-                 output_directory:str,
-                 subdirectory_name: str,
-                 df_result:DataFrame,
-                 df_key: str,
-                 to_be_cut: bool):
+def select_lidar(
+    config: DictConfig,
+    input_directory: str,
+    output_directory: str,
+    subdirectory_name: str,
+    df_result: DataFrame,
+    df_key: str,
+    to_be_cut: bool,
+):
     """
     Walk the input directory searching for las files, and pick the ones that intersect with the shapefile.
     When a las file is half inside the shapfile, it is cut if "to_be_cut" is true, otherwise it kept whole

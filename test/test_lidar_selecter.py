@@ -1,18 +1,12 @@
-import sys
-
-import laspy
-from hydra import compose, initialize
-from shapely.geometry import MultiPolygon
-import numpy as np
 import geopandas as gpd
+import laspy
+import numpy as np
+from hydra import compose, initialize
 from pandas import DataFrame
+from shapely.geometry import MultiPolygon
 
-import constants as c
-
-sys.path.append('../patchwork')
-
-from lidar_selecter import cut_lidar, select_lidar, update_df_result
-
+import patchwork.constants as c
+from patchwork.lidar_selecter import cut_lidar, select_lidar, update_df_result
 
 CRS = 2154
 TILE_SIZE = 1000
@@ -32,10 +26,15 @@ LASFILE_NAME = "las.las"
 
 
 def test_cut_lidar():
-    shapefile_geometry = MultiPolygon([([SHAPE_CORNER_1, SHAPE_CORNER_2, SHAPE_CORNER_3],),])
-    las_points = np.array([POINT_INSIDE_1, POINT_INSIDE_2, POINT_OUTSIDE_1, POINT_OUTSIDE_2],
-                          dtype=[('x', 'float32'), ('y', 'float32'), ('z', 'float32')]
-                          )
+    shapefile_geometry = MultiPolygon(
+        [
+            ([SHAPE_CORNER_1, SHAPE_CORNER_2, SHAPE_CORNER_3],),
+        ]
+    )
+    las_points = np.array(
+        [POINT_INSIDE_1, POINT_INSIDE_2, POINT_OUTSIDE_1, POINT_OUTSIDE_2],
+        dtype=[("x", "float32"), ("y", "float32"), ("z", "float32")],
+    )
     points_in_geometry = cut_lidar(las_points, shapefile_geometry)
     list_points_in_geometry = points_in_geometry.tolist()
     assert POINT_INSIDE_1 in list_points_in_geometry
@@ -50,8 +49,12 @@ def test_select_lidar(tmp_path_factory):
     shp_name = "shapefile.shp"
     shapefile_path = shp_dir / shp_name
 
-    shapefile_geometry = MultiPolygon([([SHAPE_CORNER_1, SHAPE_CORNER_2, SHAPE_CORNER_3],),])
-    gpd_shapefile_geometry = gpd.GeoDataFrame({'geometry': [shapefile_geometry]}, crs=CRS)
+    shapefile_geometry = MultiPolygon(
+        [
+            ([SHAPE_CORNER_1, SHAPE_CORNER_2, SHAPE_CORNER_3],),
+        ]
+    )
+    gpd_shapefile_geometry = gpd.GeoDataFrame({"geometry": [shapefile_geometry]}, crs=CRS)
     gpd_shapefile_geometry.to_file(shapefile_path)
 
     # las creation
@@ -59,13 +62,14 @@ def test_select_lidar(tmp_path_factory):
     las_path = input_directory / LASFILE_NAME
 
     las = laspy.LasData(laspy.LasHeader(point_format=3, version="1.4"))
-    las_points = np.array([POINT_INSIDE_1, POINT_INSIDE_2, POINT_OUTSIDE_1, POINT_OUTSIDE_2],
-                          dtype=[('x', 'float32'), ('y', 'float32'), ('z', 'float32')]
-                          )
+    las_points = np.array(
+        [POINT_INSIDE_1, POINT_INSIDE_2, POINT_OUTSIDE_1, POINT_OUTSIDE_2],
+        dtype=[("x", "float32"), ("y", "float32"), ("z", "float32")],
+    )
 
-    las.x = las_points['x']
-    las.y = las_points['y']
-    las.z = las_points['z']
+    las.x = las_points["x"]
+    las.y = las_points["y"]
+    las.z = las_points["z"]
 
     las.write(las_path)
 
@@ -73,23 +77,16 @@ def test_select_lidar(tmp_path_factory):
     output_directory = las_path = tmp_path_factory.mktemp(OUTPUT_DIRECTORY)
 
     # create teh dataframe (to put the result in)
-    data = {c.COORDINATES_KEY: [],
-            c.DONOR_FILE_KEY: [],
-            c.RECIPIENT_FILE_KEY: []
-            }
+    data = {c.COORDINATES_KEY: [], c.DONOR_FILE_KEY: [], c.RECIPIENT_FILE_KEY: []}
     df_result = DataFrame(data=data)
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.SHP_DIRECTORY={shp_dir}",
-                f"filepath.SHP_NAME={shp_name}",
-                f"TILE_SIZE={TILE_SIZE}"
-            ]
+            overrides=[f"filepath.SHP_DIRECTORY={shp_dir}", f"filepath.SHP_NAME={shp_name}", f"TILE_SIZE={TILE_SIZE}"],
         )
         subdirectory_name = SUBDIRECTORY_NAME
-        select_lidar(config, input_directory, output_directory, subdirectory_name,df_result, c.DONOR_FILE_KEY, True)
+        select_lidar(config, input_directory, output_directory, subdirectory_name, df_result, c.DONOR_FILE_KEY, True)
 
     output_las_path = output_directory / subdirectory_name / LASFILE_NAME
     with laspy.open(output_las_path) as las_file:
@@ -107,10 +104,7 @@ def test_select_lidar(tmp_path_factory):
 
 
 def test_update_df_result():
-    data = {c.COORDINATES_KEY: [],
-            c.DONOR_FILE_KEY: [],
-            c.RECIPIENT_FILE_KEY: []
-            }
+    data = {c.COORDINATES_KEY: [], c.DONOR_FILE_KEY: [], c.RECIPIENT_FILE_KEY: []}
     df_result = DataFrame(data=data)
     corner_string = "1111_2222"
     donor_path = "dummy_path_1"

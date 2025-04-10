@@ -1,18 +1,18 @@
-import os 
+import os
 
 import numpy as np
-from omegaconf import DictConfig
-import rasterio as rs
-from rasterio.transform import from_origin
 import pandas as pd
+import rasterio as rs
+from omegaconf import DictConfig
 from pandas import DataFrame
+from rasterio.transform import from_origin
 
-from tools import get_tile_origin_from_pointcloud
-from constants import PATCH_X_STR, PATCH_Y_STR
+from patchwork.constants import PATCH_X_STR, PATCH_Y_STR
+from patchwork.tools import get_tile_origin_from_pointcloud
 
 
 def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
-    """ create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
+    """create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
     1 if the patch has at least one point of df_points
     0 if the patch has no point from df_points
     """
@@ -40,14 +40,22 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
     grid = create_indices_grid(config, df_points)
-    output_indices_map_path = os.path.join(config.filepath.OUTPUT_INDICES_MAP_DIR, config.filepath.OUTPUT_INDICES_MAP_NAME)
+    output_indices_map_path = os.path.join(
+        config.filepath.OUTPUT_INDICES_MAP_DIR, config.filepath.OUTPUT_INDICES_MAP_NAME
+    )
 
     transform = from_origin(corner_x, corner_y, config.PATCH_SIZE, config.PATCH_SIZE)
-    indices_map = rs.open(output_indices_map_path, 'w', driver='GTiff',
-                          height=grid.shape[0], width=grid.shape[1],
-                          count=1, dtype=str(grid.dtype),
-                          crs=config.CRS,
-                          transform=transform)
+    indices_map = rs.open(
+        output_indices_map_path,
+        "w",
+        driver="GTiff",
+        height=grid.shape[0],
+        width=grid.shape[1],
+        count=1,
+        dtype=str(grid.dtype),
+        crs=config.CRS,
+        transform=transform,
+    )
     indices_map.write(grid, 1)
     indices_map.close()
 

@@ -1,21 +1,22 @@
-import sys
 import os
 
-from hydra import compose, initialize
 import numpy as np
 import pandas as pd
 import rasterio as rs
+from hydra import compose, initialize
 from rasterio.transform import from_origin
 
-sys.path.append('../patchwork')
-
-from indices_map import create_indices_grid, create_indices_map, read_indices_map
-from constants import PATCH_X_STR, PATCH_Y_STR
+from patchwork.constants import PATCH_X_STR, PATCH_Y_STR
+from patchwork.indices_map import (
+    create_indices_grid,
+    create_indices_map,
+    read_indices_map,
+)
 
 PATCH_SIZE = 1
 TILE_SIZE = 3
 
-DATA_POINTS = {'x': [0.0, 1.5, 3, 1.5, 2.5], 'y': [0.0, 0.5, 0.5, 1.5, 3]}
+DATA_POINTS = {"x": [0.0, 1.5, 3, 1.5, 2.5], "y": [0.0, 0.5, 0.5, 1.5, 3]}
 # we want y=0 at the bottom, but in a ndarray it's at the top, so grid['y'] = SIZE_Y - data_points['y']
 POINTS_IN_GRID = [(0, 2), (1, 2), (2, 2), (1, 1), (2, 0)]
 POINTS_NOT_IN_GRID = [(0, 1), (2, 1), (0, 0), (0, 1)]
@@ -24,11 +25,7 @@ POINTS_NOT_IN_GRID = [(0, 1), (2, 1), (0, 0), (0, 1)]
 def test_create_indices_points():
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"PATCH_SIZE={PATCH_SIZE}",
-                f"TILE_SIZE={TILE_SIZE}"
-            ]
+            config_name="configs_patchwork.yaml", overrides=[f"PATCH_SIZE={PATCH_SIZE}", f"TILE_SIZE={TILE_SIZE}"]
         )
         df_points = pd.DataFrame(data=DATA_POINTS)
         grid = create_indices_grid(config, df_points)
@@ -53,7 +50,7 @@ def test_create_indices_map(tmp_path_factory):
                 f"TILE_SIZE={TILE_SIZE}",
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_file_name}",
-            ]
+            ],
         )
 
         df_points = pd.DataFrame(data=DATA_POINTS)
@@ -81,26 +78,32 @@ def test_read_indices_map(tmp_path_factory):
                 f"TILE_SIZE={TILE_SIZE}",
                 f"filepath.INPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.INPUT_INDICES_MAP_NAME={tmp_file_name}",
+            ],
+        )
+
+        grid = np.array(
+            [
+                [0, 0, 1],
+                [0, 1, 0],
+                [1, 1, 1],
             ]
         )
 
-        grid = np.array([
-            [0, 0, 1],
-            [0, 1, 0],
-            [1, 1, 1],])
-
         transform = from_origin(0, 3, config.PATCH_SIZE, config.PATCH_SIZE)
-        output_indices_map_path = os.path.join(config.filepath.INPUT_INDICES_MAP_DIR, config.filepath.INPUT_INDICES_MAP_NAME)
-        indices_map = rs.open(output_indices_map_path,
-                              'w',
-                              driver='GTiff',
-                              height=grid.shape[0],
-                              width=grid.shape[1],
-                              count=1,
-                              dtype=str(grid.dtype),
-                              crs=config.CRS,
-                              transform=transform
-                              )
+        output_indices_map_path = os.path.join(
+            config.filepath.INPUT_INDICES_MAP_DIR, config.filepath.INPUT_INDICES_MAP_NAME
+        )
+        indices_map = rs.open(
+            output_indices_map_path,
+            "w",
+            driver="GTiff",
+            height=grid.shape[0],
+            width=grid.shape[1],
+            count=1,
+            dtype=str(grid.dtype),
+            crs=config.CRS,
+            transform=transform,
+        )
         indices_map.write(grid, 1)
         indices_map.close()
 

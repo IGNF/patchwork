@@ -1,20 +1,23 @@
-import sys
 import os
 
-import pytest
-from hydra import compose, initialize
 import laspy
 import numpy as np
 import pandas as pd
+import pytest
+from hydra import compose, initialize
 from pandas import DataFrame
 
-sys.path.append('../patchwork')
-
-import constants as c
-from patchwork import get_complementary_points, get_field_from_header, get_selected_classes_points
-from patchwork import get_type, append_points, get_donor_from_csv, get_donor_path
-from tools import get_tile_origin_from_pointcloud
-from constants import CLASSIFICATION_STR
+import patchwork.constants as c
+from patchwork.patchwork import (
+    append_points,
+    get_complementary_points,
+    get_donor_from_csv,
+    get_donor_path,
+    get_field_from_header,
+    get_selected_classes_points,
+    get_type,
+)
+from patchwork.tools import get_tile_origin_from_pointcloud
 
 RECIPIENT_TEST_DIR = "test/data/"
 RECIPIENT_TEST_NAME = "recipient_test.laz"
@@ -22,8 +25,8 @@ RECIPIENT_TEST_NAME = "recipient_test.laz"
 DONOR_CLASS_LIST = [2, 9]
 RECIPIENT_CLASS_LIST = [2, 3, 9, 17]
 VIRTUAL_CLASS_TRANSLATION = {2: 69, 9: 70}
-POINT_1 = {'x': 1, 'y': 2, 'z': 3, CLASSIFICATION_STR: 4}
-POINT_2 = {'x': 5, 'y': 6, 'z': 7, CLASSIFICATION_STR: 8}
+POINT_1 = {"x": 1, "y": 2, "z": 3, c.CLASSIFICATION_STR: 4}
+POINT_2 = {"x": 5, "y": 6, "z": 7, c.CLASSIFICATION_STR: 8}
 NEW_COLUMN = "virtual_column"
 NEW_COLUMN_SIZE = 8
 VALUE_ADDED_POINTS = 1
@@ -44,7 +47,6 @@ RECIPIENT_SLIDED_TEST_NAME = "recipient_slided_test.laz"
 COORDINATES = "1234_6789"
 
 
-
 def test_get_field_from_header():
     with laspy.open(os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
@@ -61,23 +63,21 @@ def test_get_selected_classes_points():
             overrides=[
                 f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
-                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}"
-            ]
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+            ],
         )
 
-        with laspy.open(os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)) as recipient_file:
+        with laspy.open(
+            os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        ) as recipient_file:
             recipient_points = recipient_file.read().points
 
             tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
 
             df_recipient_points = get_selected_classes_points(
-                config,
-                tile_origin_recipient,
-                recipient_points,
-                config.RECIPIENT_CLASS_LIST,
-                []
-                )
-            for classification in np.unique(df_recipient_points[CLASSIFICATION_STR]):
+                config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, []
+            )
+            for classification in np.unique(df_recipient_points[c.CLASSIFICATION_STR]):
                 assert classification in RECIPIENT_CLASS_LIST
 
 
@@ -93,7 +93,7 @@ def test_get_complementary_points():
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
-            ]
+            ],
         )
 
         complementary_points = get_complementary_points(config)
@@ -125,7 +125,7 @@ def test_get_complementary_points_2():
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
-            ]
+            ],
         )
 
         complementary_points = get_complementary_points(config)
@@ -148,11 +148,11 @@ def test_get_complementary_points_3():
                 f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
                 f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_SLIDED_TEST_DIR}",
                 f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
-            ]
+            ],
         )
 
         las = laspy.read(os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME))
-        las.points['x'] = las.points['x'] + config.TILE_SIZE
+        las.points["x"] = las.points["x"] + config.TILE_SIZE
         las.write(os.path.join(RECIPIENT_SLIDED_TEST_DIR, RECIPIENT_SLIDED_TEST_NAME))
 
         with pytest.raises(Exception):
@@ -185,7 +185,7 @@ def test_append_points(tmp_path_factory):
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_file_name}",
-            ]
+            ],
         )
 
         recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
@@ -211,7 +211,11 @@ def test_append_points(tmp_path_factory):
             assert point in las_output.points
 
         # add 1 point
-        extra_points = pd.DataFrame(data=[POINT_1, ])
+        extra_points = pd.DataFrame(
+            data=[
+                POINT_1,
+            ]
+        )
         append_points(config, extra_points)
 
         # assert a point has been added
@@ -219,7 +223,7 @@ def test_append_points(tmp_path_factory):
         assert get_point_count(output_file) == point_count + 1
 
         # # add 0 point
-        extra_points = pd.DataFrame(data={'x': [], 'y': [], 'z': [], CLASSIFICATION_STR: []})
+        extra_points = pd.DataFrame(data={"x": [], "y": [], "z": [], c.CLASSIFICATION_STR: []})
         append_points(config, extra_points)
 
         # assert a point has been added
@@ -241,8 +245,8 @@ def test_append_points_new_column(tmp_path_factory):
                 f"filepath.OUTPUT_NAME={tmp_file_name}",
                 f"NEW_COLUMN={NEW_COLUMN}",
                 f"NEW_COLUMN_SIZE={NEW_COLUMN_SIZE}",
-                f"VALUE_ADDED_POINTS={VALUE_ADDED_POINTS}"
-            ]
+                f"VALUE_ADDED_POINTS={VALUE_ADDED_POINTS}",
+            ],
         )
 
         output_file = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
@@ -251,7 +255,9 @@ def test_append_points_new_column(tmp_path_factory):
         append_points(config, extra_points)
 
         # assert a point has been added
-        point_count = get_point_count(os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME))
+        point_count = get_point_count(
+            os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        )
         assert get_point_count(output_file) == point_count + 2
 
         # assert the new column is here
@@ -265,18 +271,27 @@ def test_append_points_new_column(tmp_path_factory):
         assert new_column[-2] == VALUE_ADDED_POINTS
         assert max(new_column[:-2]) == 0
 
+
 def test_get_donor_from_csv(tmp_path_factory):
     csv_file_path = tmp_path_factory.mktemp("csv") / "recipients_donors_links.csv"
     donor_more_fields_test_path = os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME)
     recipient_more_fields_test_path = os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)
-    data = {c.COORDINATES_KEY: [COORDINATES, ],
-            c.DONOR_FILE_KEY: [donor_more_fields_test_path, ],
-            c.RECIPIENT_FILE_KEY: [recipient_more_fields_test_path, ]
-            }
+    data = {
+        c.COORDINATES_KEY: [
+            COORDINATES,
+        ],
+        c.DONOR_FILE_KEY: [
+            donor_more_fields_test_path,
+        ],
+        c.RECIPIENT_FILE_KEY: [
+            recipient_more_fields_test_path,
+        ],
+    }
     DataFrame(data=data).to_csv(csv_file_path)
 
     donor_file_path = get_donor_from_csv(recipient_more_fields_test_path, csv_file_path)
     assert donor_file_path == donor_more_fields_test_path
+
 
 def test_get_donor_path(tmp_path_factory):
     # check get_donor_path when no csv
@@ -288,7 +303,7 @@ def test_get_donor_path(tmp_path_factory):
                 f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
                 f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_SLIDED_TEST_DIR}",
                 f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
-            ]
+            ],
         )
         donor_dir, donor_name = get_donor_path(config)
         assert donor_dir == DONOR_TEST_DIR
@@ -299,10 +314,7 @@ def test_get_donor_path(tmp_path_factory):
     csv_file_name = "recipients_donors_links.csv"
     csv_file_path = os.path.join(csv_file_dir, csv_file_name)
 
-    data = {c.COORDINATES_KEY: [],
-            c.DONOR_FILE_KEY: [],
-            c.RECIPIENT_FILE_KEY: []
-            }
+    data = {c.COORDINATES_KEY: [], c.DONOR_FILE_KEY: [], c.RECIPIENT_FILE_KEY: []}
     DataFrame(data=data).to_csv(csv_file_path)
 
     with initialize(version_base="1.2", config_path="../configs"):
@@ -315,7 +327,7 @@ def test_get_donor_path(tmp_path_factory):
                 f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
                 f"filepath.CSV_DIRECTORY={csv_file_dir}",
                 f"filepath.CSV_NAME={csv_file_name}",
-            ]
+            ],
         )
 
         donor_dir, donor_name = get_donor_path(config)
@@ -325,10 +337,17 @@ def test_get_donor_path(tmp_path_factory):
     # check get_donor_path when csv but with a matching donor in it
     donor_more_fields_test_path = os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME)
     recipient_more_fields_test_path = os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)
-    data = {c.COORDINATES_KEY: [COORDINATES, ],
-            c.DONOR_FILE_KEY: [donor_more_fields_test_path, ],
-            c.RECIPIENT_FILE_KEY: [recipient_more_fields_test_path, ]
-            }
+    data = {
+        c.COORDINATES_KEY: [
+            COORDINATES,
+        ],
+        c.DONOR_FILE_KEY: [
+            donor_more_fields_test_path,
+        ],
+        c.RECIPIENT_FILE_KEY: [
+            recipient_more_fields_test_path,
+        ],
+    }
     DataFrame(data=data).to_csv(csv_file_path)
 
     with initialize(version_base="1.2", config_path="../configs"):
@@ -341,7 +360,7 @@ def test_get_donor_path(tmp_path_factory):
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"filepath.CSV_DIRECTORY={csv_file_dir}",
                 f"filepath.CSV_NAME={csv_file_name}",
-            ]
+            ],
         )
 
         donor_dir, donor_name = get_donor_path(config)
