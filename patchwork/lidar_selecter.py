@@ -42,6 +42,8 @@ def patchwork_dispatcher(config: DictConfig):
         c.RECIPIENT_FILE_KEY,
         False,
     )
+
+    pathlib.Path(config.filepath.CSV_DIRECTORY).mkdir(exist_ok=True)
     df_result.to_csv(os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False)
 
 
@@ -84,6 +86,13 @@ def select_lidar(
 
     time_old = timeit.default_timer()
     time_start = time_old
+
+    directory_path = os.path.join(output_directory, subdirectory_name)
+    # Create output dir only if asked to cut
+    # Otherwise  the input file is intended to be used directly (no copy to the output directory)
+    if to_be_cut:
+        pathlib.Path(directory_path).mkdir(parents=True, exist_ok=True)
+
     for root, _, file_names in os.walk(input_directory):
 
         for file_name in file_names:
@@ -105,9 +114,6 @@ def select_lidar(
                     logger.info(f"Processed {file_name} (out) in {delta_time} sec")
                     time_old = time_new
                     continue
-
-                directory_path = os.path.join(output_directory, subdirectory_name)
-                pathlib.Path(directory_path).mkdir(parents=True, exist_ok=True)
 
                 las_points = crop_tile(config, raw_las_points)
                 x_corner, y_corner = get_tile_origin_from_pointcloud(config, las_points)

@@ -40,6 +40,7 @@ def create_indices_map(config: DictConfig, df_points: DataFrame):
     corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
     grid = create_indices_grid(config, df_points)
+    os.makedirs(config.filepath.OUTPUT_INDICES_MAP_DIR, exist_ok=True)
     output_indices_map_path = os.path.join(
         config.filepath.OUTPUT_INDICES_MAP_DIR, config.filepath.OUTPUT_INDICES_MAP_NAME
     )
