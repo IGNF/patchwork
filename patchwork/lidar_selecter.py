@@ -44,7 +44,9 @@ def patchwork_dispatcher(config: DictConfig):
     )
 
     pathlib.Path(config.filepath.CSV_DIRECTORY).mkdir(exist_ok=True)
-    df_result.to_csv(os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False)
+    df_result.to_csv(
+        os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME), index=False, encoding="utf-8"
+    )
 
 
 def cut_lidar(las_points: ScaleAwarePointRecord, shapefile_geometry: MultiPolygon) -> ScaleAwarePointRecord:
@@ -105,7 +107,6 @@ def select_lidar(
                 raw_las_points = las_file.read().points
                 min_x, max_x, min_y, max_y = identify_bounds(config.TILE_SIZE, raw_las_points)
                 intersect_area = shapefile_geometry.intersection(box(min_x, min_y, max_x, max_y)).area
-
                 # if intersect area == 0, this tile is fully outside the shapefile
                 if intersect_area == 0:
 
