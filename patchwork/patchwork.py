@@ -199,9 +199,15 @@ def get_donor_from_csv(recipient_file_path: str, csv_file_path: str) -> str:
     """
     df_csv_data = pd.read_csv(csv_file_path)
     donor_file_paths = df_csv_data.loc[df_csv_data[c.RECIPIENT_FILE_KEY] == recipient_file_path, c.DONOR_FILE_KEY]
-    if len(donor_file_paths) > 0:
-        return donor_file_paths.loc[0]  # there should be only one donor file for a given recipient file
-    return ""
+    if len(donor_file_paths) == 1:
+        return donor_file_paths.iloc[0]
+    elif len(donor_file_paths) == 0:
+        return ""
+    else:
+        raise RuntimeError(
+            f"Found more than one donor file associated with recipient file {recipient_file_path}."
+            "Please check the matching csv file"
+        )
 
 
 def get_donor_path(config: DictConfig) -> Tuple[str, str]:
