@@ -1,4 +1,6 @@
 # CHANGELOG
+
+## 1.1.1
 - lint
 - ajout de pre-commit hooks pour appliquer le lint au moment des commits
 - patchwork crée lui-même les sous-dossiers dont chaque étape a besoin
