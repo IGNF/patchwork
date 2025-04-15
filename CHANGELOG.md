@@ -1,4 +1,9 @@
 # CHANGELOG
+- lint
+- ajout de pre-commit hooks pour appliquer le lint au moment des commits
+- patchwork crée lui-même les sous-dossiers dont chaque étape a besoin
+- correctif pour la recherche de correspondance des las dans le csv de matching
+
 ## 1.1.0
 - modification de chemin pour pouvoir passer dans la gpao
 - coupure des chemins de fichiers en chemins de répertoires/nom de fichiers pour pouvoir les utiliser sur docker + store

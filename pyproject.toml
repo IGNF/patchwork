@@ -1,0 +1,26 @@
+[project]
+name = "patchwork"
+
+description = "Merge patches from 2 lidar files depending on the points classes"
+readme = "README.md"
+authors = [
+    { name = "Michel Daab" },
+    { name = "Léa Vauchier", email = "lea.vauchier@ign.fr" },
+]
+
+[tool.black]
+line-length = 119
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.toml
+  |\.sh
+  |\.git
+  |\.ini
+  |\.bat
+  | data
+)/
+'''
+
+[tool.pytest.ini_options]
+markers = ["slow: marks tests as slow (select with '--runslow')"]

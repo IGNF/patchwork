@@ -9,11 +9,13 @@ dependencies:
   - numpy
   - geopandas==0.*
   - shapely>=2.0.3
+  - rasterio
   # ------------- logging ------------- #
   - loguru
     # --------- hydra configs --------- #
   - hydra-core
   - hydra-colorlog
   # ----------- linting --------------- #
+  - pre-commit
+  - black
   - flake8
-  - rasterio
