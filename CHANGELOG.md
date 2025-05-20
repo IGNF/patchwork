@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- génération de la carte d'indice même quand il n'y a pas de points à ajouter
+
 ## 1.1.1
 - lint
 - ajout de pre-commit hooks pour appliquer le lint au moment des commits
