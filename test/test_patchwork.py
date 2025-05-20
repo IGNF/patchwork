@@ -16,6 +16,7 @@ from patchwork.patchwork import (
     get_field_from_header,
     get_selected_classes_points,
     get_type,
+    patchwork,
 )
 from patchwork.tools import get_tile_origin_from_pointcloud
 
@@ -366,3 +367,66 @@ def test_get_donor_path(tmp_path_factory):
         donor_dir, donor_name = get_donor_path(config)
         assert donor_dir == DONOR_MORE_FIELDS_TEST_DIR
         assert donor_name == DONOR_MORE_FIELDS_TEST_NAME
+
+
+def test_patchwork_default(tmp_path_factory):
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_output_las_name = "result_patchwork.laz"
+    tmp_output_indices_map_name = "result_patchwerk_indices.tif"
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
+                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
+                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
+                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
+                f"filepath.OUTPUT_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_NAME={tmp_output_las_name}",
+                f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+            ],
+        )
+        patchwork(config)
+        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
+        indices_map_path = os.path.join(tmp_file_dir, tmp_output_indices_map_name)
+        assert os.path.isfile(output_path)
+        assert os.path.isfile(indices_map_path)
+        with laspy.open(recipient_path) as las_file:
+            recipient_points = las_file.read().points
+        with laspy.open(output_path) as las_file:
+            output_points = las_file.read().points
+        assert len(output_points) > len(recipient_points)
+
+
+def test_patchwork_empty_donor(tmp_path_factory):
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_output_las_name = "result_patchwork.laz"
+    tmp_output_indices_map_name = "result_patchwerk_indices.tif"
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
+                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
+                f"filepath.OUTPUT_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_NAME={tmp_output_las_name}",
+                f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+            ],
+        )
+        patchwork(config)
+        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
+        indices_map_path = os.path.join(tmp_file_dir, tmp_output_indices_map_name)
+        assert os.path.isfile(output_path)
+        assert os.path.isfile(indices_map_path)
+        with laspy.open(recipient_path) as las_file:
+            recipient_points = las_file.read().points
+        with laspy.open(output_path) as las_file:
+            output_points = las_file.read().points
+
+        assert len(output_points) == len(recipient_points)
