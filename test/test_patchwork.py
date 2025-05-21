@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from hydra import compose, initialize
 from pandas import DataFrame
+from pdaltools.las_info import get_tile_origin_using_header_info
 
 import patchwork.constants as c
 from patchwork.patchwork import (
@@ -18,7 +19,6 @@ from patchwork.patchwork import (
     get_type,
     patchwork,
 )
-from patchwork.tools import get_tile_origin_from_pointcloud
 
 RECIPIENT_TEST_DIR = "test/data/"
 RECIPIENT_TEST_NAME = "recipient_test.laz"
@@ -67,14 +67,10 @@ def test_get_selected_classes_points():
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
             ],
         )
-
-        with laspy.open(
-            os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-        ) as recipient_file:
+        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+        tile_origin_recipient = get_tile_origin_using_header_info(recipient_path, config.TILE_SIZE)
+        with laspy.open(recipient_path) as recipient_file:
             recipient_points = recipient_file.read().points
-
-            tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
-
             df_recipient_points = get_selected_classes_points(
                 config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, []
             )

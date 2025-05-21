@@ -81,7 +81,9 @@ def get_complementary_points(config: DictConfig) -> pd.DataFrame:
 
         # check if both files are on the same area
         tile_origin_donor = get_tile_origin_from_pointcloud(config, donor_points)
-        tile_origin_recipient = get_tile_origin_from_pointcloud(config, recipient_points)
+        tile_origin_recipient = get_tile_origin_using_header_info(
+            filename=recipient_file_path, tile_width=config.TILE_SIZE
+        )
         if tile_origin_donor != tile_origin_recipient:
             raise ValueError(
                 f"{donor_file_path} and \
