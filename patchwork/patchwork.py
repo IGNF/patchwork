@@ -3,6 +3,7 @@ from pathlib import Path
 from shutil import copy2
 from typing import List, Tuple
 
+import geopandas as gpd
 import laspy
 import numpy as np
 import pandas as pd
@@ -12,6 +13,7 @@ from pdaltools.las_info import get_tile_origin_using_header_info
 
 import patchwork.constants as c
 from patchwork.indices_map import create_indices_map
+from patchwork.shapefile_data_extraction import get_donor_info_from_shapefile
 from patchwork.tools import crop_tile, get_tile_origin_from_pointcloud
 
 
@@ -68,7 +70,8 @@ def get_type(new_column_size: int):
             raise ValueError(f"{new_column_size} is not a correct value for NEW_COLUMN_SIZE")
 
 
-def get_complementary_points(config: DictConfig) -> pd.DataFrame:
+def get_complementary_points(df_donor_info: gpd.GeoDataFrame, config: DictConfig) -> pd.DataFrame:
+    raise NotImplementedError("get_complementary_points needs to be adapted!")
     donor_dir, donor_name = get_donor_path(config)
     donor_file_path = os.path.join(donor_dir, donor_name)
     recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
@@ -229,16 +232,22 @@ def get_donor_path(config: DictConfig) -> Tuple[str, str]:
 
 
 def patchwork(config: DictConfig):
-    _, donor_name = get_donor_path(config)
     recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-    if donor_name:
-        complementary_bd_points = get_complementary_points(config)
-        append_points(config, complementary_bd_points)
+    origin_x_meters, origin_y_meters = get_tile_origin_using_header_info(recipient_filepath, config.TILE_SIZE)
+    x_shapefile = origin_x_meters / config.SHP_X_Y_TO_METER_FACTOR
+    y_shapefile = origin_y_meters / config.SHP_X_Y_TO_METER_FACTOR
 
-    else:  # if no matching donor, we simply copy the recipient to the output without doing anything
-        output_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
-        copy2(recipient_filepath, output_filepath)
-        complementary_bd_points = pd.DataFrame()  # No points to add
+    shapefile_path = os.path.join(config.filepath.SHP_DIRECTORY, config.filepath.SHP_NAME)
+    donor_info_df = get_donor_info_from_shapefile(
+        shapefile_path,
+        x_shapefile,
+        y_shapefile,
+        config.filepath.DONOR_SUBDIRECTORY,
+    )
+    raise NotImplementedError()
+    complementary_bd_points = get_complementary_points(donor_info_df, config)
+
+    append_points(config, complementary_bd_points)
 
     corner_x, corner_y = get_tile_origin_using_header_info(filename=recipient_filepath, tile_width=config.TILE_SIZE)
     create_indices_map(config, complementary_bd_points, corner_x, corner_y)

@@ -7,9 +7,9 @@
 work_dir: ${hydra:runtime.cwd}
 
 # disable ouput directory from being created
-hydra:  
-  output_subdir: null  
-  run:  
+hydra:
+  output_subdir: null
+  run:
     dir: .
 
 # disable main.log from being created
@@ -40,7 +40,13 @@ filepath:
 
   DONOR_NAME: null # name of the donor file for patchwork
   RECIPIENT_NAME: null # name of the recipient file for patchwork
-  
+
+  # The input shapefile should contain a "nuage_mixa" attrubute for each geometry
+  # "nuage_mixa" contains the path to the folder that contains the path to the folder
+  # containing the files related to a specific donor source.
+  # Laz/las files from this source are usually contained in a subdirectory of "nuage_mixa"
+  # path to this subdorectory can be configures using "DONOR_SUBDIRECTORY"
+  DONOR_SUBDIRECTORY: "data"
 
 
 CRS: 2154
@@ -50,6 +56,7 @@ RECIPIENT_CLASS_LIST: [2, 6, 9, 17]
 
 RECIPIENT_SUFFIX: "_recipient"
 TILE_SIZE: 1000
+SHP_X_Y_TO_METER_FACTOR: 1000 # multiplication factor to convert shapefile x, y attributes values to meters
 PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so for 1000: 0.25, 0.5, 2, 4, 5, 10, 25...
 NEW_COLUMN: null # If not null, contains the name of the new column
 NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64
