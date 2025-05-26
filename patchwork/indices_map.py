@@ -8,38 +8,36 @@ from pandas import DataFrame
 from rasterio.transform import from_origin
 
 from patchwork.constants import PATCH_X_STR, PATCH_Y_STR
-from patchwork.tools import get_tile_origin_from_pointcloud
 
 
-def create_indices_grid(config: DictConfig, df_points: DataFrame) -> np.ndarray:
+def create_indices_grid(config: DictConfig, df_points: DataFrame, corner_x: int, corner_y: int) -> np.ndarray:
     """create a binary grid matching the tile the points of df_points are from, where each patch is equal to:
     1 if the patch has at least one point of df_points
     0 if the patch has no point from df_points
     """
     size_grid = int(config.TILE_SIZE / config.PATCH_SIZE)
 
-    corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
-
-    list_coordinates_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
-    list_coordinates_y = np.int32((corner_y - df_points.y) / config.PATCH_SIZE)
-
-    # edge cases where points are exactly on the... edge of the tile, but still valid
-    list_coordinates_x[list_coordinates_x == size_grid] = size_grid - 1
-    list_coordinates_y[list_coordinates_y == size_grid] = size_grid - 1
-
     grid = np.zeros((size_grid, size_grid))
 
-    grid[list_coordinates_x, list_coordinates_y] = 1
+    if not df_points.empty:
+        list_coordinates_x = np.int32((df_points.x - corner_x) / config.PATCH_SIZE)
+        list_coordinates_y = np.int32((corner_y - df_points.y) / config.PATCH_SIZE)
+
+        # edge cases where points are exactly on the... edge of the tile, but still valid
+        list_coordinates_x[list_coordinates_x == size_grid] = size_grid - 1
+        list_coordinates_y[list_coordinates_y == size_grid] = size_grid - 1
+
+        grid[list_coordinates_x, list_coordinates_y] = 1
+
     return grid.transpose()
 
 
-def create_indices_map(config: DictConfig, df_points: DataFrame):
+def create_indices_map(config: DictConfig, df_points: DataFrame, corner_x: int, corner_y: int):
     """
     Save a binary grid for the tile into a geotiff
     """
-    corner_x, corner_y = get_tile_origin_from_pointcloud(config, df_points)
 
-    grid = create_indices_grid(config, df_points)
+    grid = create_indices_grid(config, df_points, corner_x, corner_y)
     os.makedirs(config.filepath.OUTPUT_INDICES_MAP_DIR, exist_ok=True)
     output_indices_map_path = os.path.join(
         config.filepath.OUTPUT_INDICES_MAP_DIR, config.filepath.OUTPUT_INDICES_MAP_NAME

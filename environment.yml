@@ -9,6 +9,9 @@ dependencies:
   - numpy
   - geopandas==0.*
   - shapely>=2.0.3
+  - gdal
+  - pdal>=2.8
+  - python-pdal
   - rasterio
   # ------------- logging ------------- #
   - loguru
@@ -19,3 +22,5 @@ dependencies:
   - pre-commit
   - black
   - flake8
+  - pip:
+    - ign-pdal-tools==1.8.1

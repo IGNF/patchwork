@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from laspy import LasReader, ScaleAwarePointRecord
 from omegaconf import DictConfig
+from pdaltools.las_info import get_tile_origin_using_header_info
 
 import patchwork.constants as c
 from patchwork.indices_map import create_indices_map
@@ -125,20 +126,20 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
     return [dimension.name.lower() for dimension in header.point_format.dimensions]
 
 
-def test_field_exists(file_path: str, colmun: str) -> bool:
+def test_field_exists(file_path: str, column: str) -> bool:
     output_file = laspy.read(file_path)
-    return colmun in get_field_from_header(output_file)
+    return column in get_field_from_header(output_file)
 
 
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
     # get field to copy :
     recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-    ouput_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
+    output_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
     with laspy.open(recipient_filepath) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
 
     # get fields that are in the donor file we can transmit to the recipient without problem
-    # classification is in the fields to exclude because it will be copy in a special way
+    # classification is in the fields to exclude because it will be copied in a special way
     fields_to_exclude = [
         c.PATCH_X_STR,
         c.PATCH_Y_STR,
@@ -152,7 +153,7 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
         if (field.lower() in extra_points.columns) and (field.lower() not in fields_to_exclude)
     ]
 
-    copy2(recipient_filepath, ouput_filepath)
+    copy2(recipient_filepath, output_filepath)
 
     if len(extra_points) == 0:  # if no point to add, the job is done after copying the recipient file
         return
@@ -165,11 +166,11 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
                              column name in {recipient_filepath}"
             )
         new_column_type = get_type(config.NEW_COLUMN_SIZE)
-        output_las = laspy.read(ouput_filepath)
+        output_las = laspy.read(output_filepath)
         output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
-        output_las.write(ouput_filepath)
+        output_las.write(output_filepath)
 
-    with laspy.open(ouput_filepath, mode="a") as output_las:
+    with laspy.open(output_filepath, mode="a") as output_las:
         # put in a new table all extra points and their values on the fields we want to keep
         new_points = laspy.ScaleAwarePointRecord.zeros(extra_points.shape[0], header=output_las.header)
         for field in fields_to_keep:
@@ -227,12 +228,15 @@ def get_donor_path(config: DictConfig) -> Tuple[str, str]:
 
 def patchwork(config: DictConfig):
     _, donor_name = get_donor_path(config)
-    if not donor_name:  # if no matching donor, we simply copy the recipient to the output without doing anything
-        recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-        ouput_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
-        copy2(recipient_filepath, ouput_filepath)
-        return
+    recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+    if donor_name:
+        complementary_bd_points = get_complementary_points(config)
+        append_points(config, complementary_bd_points)
 
-    complementary_bd_points = get_complementary_points(config)
-    append_points(config, complementary_bd_points)
-    create_indices_map(config, complementary_bd_points)
+    else:  # if no matching donor, we simply copy the recipient to the output without doing anything
+        output_filepath = os.path.join(config.filepath.OUTPUT_DIR, config.filepath.OUTPUT_NAME)
+        copy2(recipient_filepath, output_filepath)
+        complementary_bd_points = pd.DataFrame()  # No points to add
+
+    corner_x, corner_y = get_tile_origin_using_header_info(filename=recipient_filepath, tile_width=config.TILE_SIZE)
+    create_indices_map(config, complementary_bd_points, corner_x, corner_y)
