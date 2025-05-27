@@ -41,13 +41,11 @@ filepath:
   # path to this subdorectory can be configures using "DONOR_SUBDIRECTORY"
   DONOR_SUBDIRECTORY: "data"
 
-
 CRS: 2154
 
 DONOR_CLASS_LIST: [2, 22]
 RECIPIENT_CLASS_LIST: [2, 6, 9, 17]
 
-RECIPIENT_SUFFIX: "_recipient"
 TILE_SIZE: 1000
 SHP_X_Y_TO_METER_FACTOR: 1000 # multiplication factor to convert shapefile x, y attributes values to meters
 PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so for 1000: 0.25, 0.5, 2, 4, 5, 10, 25...

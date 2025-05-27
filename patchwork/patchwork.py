@@ -94,7 +94,7 @@ def get_complementary_points(
             points_loc_gdf = gpd.GeoDataFrame(
                 geometry=gpd.points_from_xy(raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS)
             )
-            footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]])
+            footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]], crs=config.CRS)
             points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
             donor_points = raw_donor_points[points_in_footprint_gdf.index.values]
 
@@ -117,11 +117,11 @@ def get_complementary_points(
         df_recipient_non_empty_patches,
         on=[c.PATCH_X_STR, c.PATCH_Y_STR],
         how="left",
-        suffixes=("", config.RECIPIENT_SUFFIX),
+        suffixes=("", c.RECIPIENT_SUFFIX),
     )
 
     # only keep donor points in patches where there is no recipient point
-    return joined_patches.loc[joined_patches[c.CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
+    return joined_patches.loc[joined_patches[c.CLASSIFICATION_STR + c.RECIPIENT_SUFFIX].isnull()]
 
 
 def get_field_from_header(las_file: LasReader) -> List[str]:
@@ -149,7 +149,7 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
         c.PATCH_X_STR,
         c.PATCH_Y_STR,
         c.CLASSIFICATION_STR,
-        c.CLASSIFICATION_STR + config.RECIPIENT_SUFFIX,
+        c.CLASSIFICATION_STR + c.RECIPIENT_SUFFIX,
     ]
 
     fields_to_keep = [
@@ -160,9 +160,6 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     copy2(recipient_filepath, output_filepath)
 
-    if len(extra_points) == 0:  # if no point to add, the job is done after copying the recipient file
-        return
-
     # if we want a new column, we start by adding its name
     if config.NEW_COLUMN:
         if test_field_exists(recipient_filepath, config.NEW_COLUMN):
@@ -172,8 +169,17 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
             )
         new_column_type = get_type(config.NEW_COLUMN_SIZE)
         output_las = laspy.read(output_filepath)
-        output_las.add_extra_dim(laspy.ExtraBytesParams(name=config.NEW_COLUMN, type=new_column_type))
+        output_las.add_extra_dim(
+            laspy.ExtraBytesParams(
+                name=config.NEW_COLUMN,
+                type=new_column_type,
+                description="Point origin: 0=initial las",
+            )
+        )
         output_las.write(output_filepath)
+
+    if len(extra_points) == 0:  # if no point to add, the job is done after copying the recipient file
+        return
 
     with laspy.open(output_filepath, mode="a") as output_las:
         # put in a new table all extra points and their values on the fields we want to keep
@@ -195,25 +201,6 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
         new_points.classification = extra_points[c.CLASSIFICATION_STR]
         output_las.append_points(new_points)
-
-
-def get_donor_from_csv(recipient_file_path: str, csv_file_path: str) -> str:
-    """
-    check if there is a donor file, in the csv file, matching the recipient file
-    return the path to that file if it exists
-    return "" otherwise
-    """
-    df_csv_data = pd.read_csv(csv_file_path)
-    donor_file_paths = df_csv_data.loc[df_csv_data[c.RECIPIENT_FILE_KEY] == recipient_file_path, c.DONOR_FILE_KEY]
-    if len(donor_file_paths) == 1:
-        return donor_file_paths.iloc[0]
-    elif len(donor_file_paths) == 0:
-        return ""
-    else:
-        raise RuntimeError(
-            f"Found more than one donor file associated with recipient file {recipient_file_path}."
-            "Please check the matching csv file"
-        )
 
 
 def patchwork(config: DictConfig):

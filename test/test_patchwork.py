@@ -6,14 +6,12 @@ import numpy as np
 import pandas as pd
 import pytest
 from hydra import compose, initialize
-from pandas import DataFrame
 from pdaltools.las_info import get_tile_origin_using_header_info
 
 import patchwork.constants as c
 from patchwork.patchwork import (
     append_points,
     get_complementary_points,
-    get_donor_from_csv,
     get_field_from_header,
     get_selected_classes_points,
     get_type,
@@ -32,21 +30,7 @@ NEW_COLUMN = "virtual_column"
 NEW_COLUMN_SIZE = 8
 VALUE_ADDED_POINTS = 1
 
-DONOR_TEST_DIR = "test/data/"
-DONOR_TEST_NAME = "donor_test.las"
-
-RECIPIENT_MORE_FIELDS_TEST_DIR = "test/data"
-RECIPIENT_MORE_FIELDS_TEST_NAME = "recipient_more_fields_test.laz"
-
-DONOR_MORE_FIELDS_TEST_DIR = "test/data"
-DONOR_MORE_FIELDS_TEST_NAME = "donor_more_fields_test.las"
-
-RECIPIENT_SLIDED_TEST_DIR = "test/data"
-RECIPIENT_SLIDED_TEST_NAME = "recipient_slided_test.laz"
-
 SHP_X_Y_TO_METER_FACTOR = 1000
-
-COORDINATES = "1234_6789"
 
 
 def test_get_field_from_header():
@@ -300,85 +284,125 @@ def test_append_points_new_column(tmp_path_factory):
         assert max(new_column[:-2]) == 0
 
 
-def test_get_donor_from_csv(tmp_path_factory):
-    csv_file_path = tmp_path_factory.mktemp("csv") / "recipients_donors_links.csv"
-    donor_more_fields_test_path = os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME)
-    recipient_more_fields_test_path = os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)
-    data = {
-        c.COORDINATES_KEY: [
-            COORDINATES,
-        ],
-        c.DONOR_FILE_KEY: [
-            donor_more_fields_test_path,
-        ],
-        c.RECIPIENT_FILE_KEY: [
-            recipient_more_fields_test_path,
-        ],
-    }
-    DataFrame(data=data).to_csv(csv_file_path)
-
-    donor_file_path = get_donor_from_csv(recipient_more_fields_test_path, csv_file_path)
-    assert donor_file_path == donor_more_fields_test_path
-
-
-def test_patchwork_default(tmp_path_factory):
+@pytest.mark.parametrize(
+    "recipient_path, expected_nb_added_points",
+    # expected_nb_points value set after inspection of the initial result using qgis:
+    # - there are points only inside the shapefile geometry
+    # - when visualizing a grid, there seems to be no points in the cells where there is ground points in the
+    # recipient laz
+    [
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            128675,
+        ),  # One donor
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            149490,
+        ),  # Two donors
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            0,
+        ),  # No donor
+    ],
+)
+def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_points):
+    input_shp_path = "test/data/shapefile_local/patchwork_geometries.shp"
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork.laz"
-    tmp_output_indices_map_name = "result_patchwerk_indices.tif"
+    tmp_output_indices_map_name = "result_patchwork_indices.tif"
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
+                f"filepath.RECIPIENT_DIRECTORY={os.path.dirname(recipient_path)}",
+                f"filepath.RECIPIENT_NAME={os.path.basename(recipient_path)}",
+                f"filepath.SHP_DIRECTORY={os.path.dirname(input_shp_path)}",
+                f"filepath.SHP_NAME={os.path.basename(input_shp_path)}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_output_las_name}",
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                "NEW_COLUMN=null",
             ],
         )
         patchwork(config)
-        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
         output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
         indices_map_path = os.path.join(tmp_file_dir, tmp_output_indices_map_name)
         assert os.path.isfile(output_path)
         assert os.path.isfile(indices_map_path)
+
         with laspy.open(recipient_path) as las_file:
             recipient_points = las_file.read().points
         with laspy.open(output_path) as las_file:
             output_points = las_file.read().points
-        assert len(output_points) > len(recipient_points)
+            assert {n for n in las_file.header.point_format.dimension_names} == {
+                n for n in las_file.header.point_format.standard_dimension_names
+            }
+        assert len(output_points) == len(recipient_points) + expected_nb_added_points
 
 
-def test_patchwork_empty_donor(tmp_path_factory):
+@pytest.mark.parametrize(
+    "recipient_path, expected_nb_added_points",
+    # expected_nb_points value set after inspection of the initial result using qgis:
+    # - there are points only inside the shapefile geometry
+    # - when visualizing a grid, there seems to be no points in the cells where there is ground points in the
+    # recipient laz
+    [
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            128675,
+        ),  # One donor
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            149490,
+        ),  # Two donors
+        (
+            "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            0,
+        ),  # No donor
+    ],
+)
+def test_patchwork_with_origin(tmp_path_factory, recipient_path, expected_nb_added_points):
+    input_shp_path = "test/data/shapefile_local/patchwork_geometries.shp"
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork.laz"
-    tmp_output_indices_map_name = "result_patchwerk_indices.tif"
+    tmp_output_indices_map_name = "result_patchwork_indices.tif"
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
+                f"filepath.RECIPIENT_DIRECTORY={os.path.dirname(recipient_path)}",
+                f"filepath.RECIPIENT_NAME={os.path.basename(recipient_path)}",
+                f"filepath.SHP_DIRECTORY={os.path.dirname(input_shp_path)}",
+                f"filepath.SHP_NAME={os.path.basename(input_shp_path)}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_output_las_name}",
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+                "NEW_COLUMN='Origin'",
             ],
         )
         patchwork(config)
-        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
         output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
         indices_map_path = os.path.join(tmp_file_dir, tmp_output_indices_map_name)
         assert os.path.isfile(output_path)
         assert os.path.isfile(indices_map_path)
+
         with laspy.open(recipient_path) as las_file:
             recipient_points = las_file.read().points
         with laspy.open(output_path) as las_file:
             output_points = las_file.read().points
+            assert {n for n in las_file.header.point_format.dimension_names} == {
+                n for n in las_file.header.point_format.standard_dimension_names
+            } | {"Origin"}
 
-        assert len(output_points) == len(recipient_points)
+        assert len(output_points) == len(recipient_points) + expected_nb_added_points
+        assert np.sum(output_points.Origin == 0) == len(recipient_points)
+        assert np.sum(output_points.Origin == 1) == expected_nb_added_points
