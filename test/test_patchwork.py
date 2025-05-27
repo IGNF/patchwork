@@ -1,5 +1,6 @@
 import os
 
+import geopandas as gpd
 import laspy
 import numpy as np
 import pandas as pd
@@ -13,7 +14,6 @@ from patchwork.patchwork import (
     append_points,
     get_complementary_points,
     get_donor_from_csv,
-    get_donor_path,
     get_field_from_header,
     get_selected_classes_points,
     get_type,
@@ -44,6 +44,7 @@ DONOR_MORE_FIELDS_TEST_NAME = "donor_more_fields_test.las"
 RECIPIENT_SLIDED_TEST_DIR = "test/data"
 RECIPIENT_SLIDED_TEST_NAME = "recipient_slided_test.laz"
 
+SHP_X_Y_TO_METER_FACTOR = 1000
 
 COORDINATES = "1234_6789"
 
@@ -57,7 +58,6 @@ def test_get_field_from_header():
 
 
 def test_get_selected_classes_points():
-
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
@@ -78,82 +78,113 @@ def test_get_selected_classes_points():
                 assert classification in RECIPIENT_CLASS_LIST
 
 
-def test_get_complementary_points():
+@pytest.mark.parametrize(
+    "donor_info_path, recipient_path, x, y, expected_nb_points",
+    # expected_nb_points value set after inspection of the initial result using qgis:
+    # - there are points only inside the shapefile geometry
+    # - when visualizing a grid, there seems to be no points in the cells where there is ground points in the
+    # recipient laz
+    [
+        (
+            "test/data/donor_infos/donor_info_673_6362_one_donor.csv",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            673,
+            6362,
+            128675,
+        ),
+        (
+            "test/data/donor_infos/donor_info_673_6363_two_donors.csv",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            673,
+            6363,
+            149490,
+        ),
+        (
+            "test/data/donor_infos/donor_info_674_6363_no_donor.csv",
+            "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            674,
+            6363,
+            0,
+        ),
+    ],
+)
+def test_get_complementary_points(donor_info_path, recipient_path, x, y, expected_nb_points):
+    df = pd.read_csv(donor_info_path, encoding="utf-8")
+    s = gpd.GeoSeries.from_wkt(df.geometry)
+    df_donor_info = gpd.GeoDataFrame(data=df, geometry=s)
+
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ],
         )
+        complementary_points = get_complementary_points(df_donor_info, recipient_path, (x, y), config)
 
-        complementary_points = get_complementary_points(config)
-        assert len(complementary_points) == 320
+    assert np.all(complementary_points["x"] >= x * SHP_X_Y_TO_METER_FACTOR)
+    assert np.all(complementary_points["x"] <= (x + 1) * SHP_X_Y_TO_METER_FACTOR)
+    assert np.all(complementary_points["y"] >= (y - 1) * SHP_X_Y_TO_METER_FACTOR)
+    assert np.all(complementary_points["y"] <= y * SHP_X_Y_TO_METER_FACTOR)
+
+    assert len(complementary_points.index) == expected_nb_points
 
 
-def test_get_complementary_points_2():
+def test_get_complementary_points_2_more_fields(tmp_path_factory):
     """test selected_classes_points with more fields in files, different from each other's"""
+    original_recipient_path = "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz"
+    original_donor_path = (
+        "test/data/aveyron_aval_lidarBD/data/NUALID_1-0_VLIDAVEYRONAVAL_PTS_0673_6362_LAMB93_IGN69_20210319.laz"
+    )
+    original_donor_info_path = "test/data/donor_infos/donor_info_673_6362_one_donor.csv"
+    x = 673
+    y = 6362
+
+    tmp_dir = tmp_path_factory.mktemp("data")
+    tmp_recipient_name = "recipient_with_extra_dims.laz"
+    tmp_recipient_path = os.path.join(tmp_dir, tmp_recipient_name)
+
+    tmp_donor_name = "donor_with_extra_dims.laz"
+    tmp_donor_path = os.path.join(tmp_dir, tmp_donor_name)
+
+    df = pd.read_csv(original_donor_info_path, encoding="utf-8")
+    s = gpd.GeoSeries.from_wkt(df.geometry)
+    df_donor_info = gpd.GeoDataFrame(data=df, geometry=s)
+    df_donor_info["full_path"] = [tmp_donor_path]
+
     extra_fields_for_recipient = ["f1", "f2"]
-    las = laspy.read(os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME))
+    las = laspy.read(original_recipient_path)
     for field in extra_fields_for_recipient:
         las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
-    las.write(os.path.join(RECIPIENT_MORE_FIELDS_TEST_DIR, RECIPIENT_MORE_FIELDS_TEST_NAME))
+    las.write(tmp_recipient_path)
 
     extra_fields_for_donor = ["f3", "f4"]
-    las = laspy.read(os.path.join(DONOR_TEST_DIR, DONOR_TEST_NAME))
+    las = laspy.read(original_donor_path)
     for field in extra_fields_for_donor:
         las.add_extra_dim(laspy.ExtraBytesParams(name=field, type=np.uint64))
-    las.write(os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME))
+    las.write(tmp_donor_path)
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_MORE_FIELDS_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_MORE_FIELDS_TEST_NAME}",
-                f"filepath.DONOR_DIRECTORY={DONOR_MORE_FIELDS_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_MORE_FIELDS_TEST_NAME}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
             ],
         )
 
-        complementary_points = get_complementary_points(config)
-        assert len(complementary_points) == 320
-        columns = complementary_points.columns
-        for field in extra_fields_for_recipient:  # no extra field from the recipient should exist
-            assert field not in columns
-        for field in extra_fields_for_donor:  # every extra field from the donor should exist...
-            assert field in columns
-            assert complementary_points[field].all() == 0  # ...but should be at 0
+        complementary_points = get_complementary_points(df_donor_info, tmp_recipient_path, (x, y), config)
 
-
-def test_get_complementary_points_3():
-    """test selected_classes_points with 2 files from different areas"""
-    with initialize(version_base="1.2", config_path="../configs"):
-        config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_SLIDED_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
-            ],
-        )
-
-        las = laspy.read(os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME))
-        las.points["x"] = las.points["x"] + config.TILE_SIZE
-        las.write(os.path.join(RECIPIENT_SLIDED_TEST_DIR, RECIPIENT_SLIDED_TEST_NAME))
-
-        with pytest.raises(Exception):
-            get_complementary_points(config)
+    assert len(complementary_points.index) == 128675
+    columns = complementary_points.columns
+    for field in extra_fields_for_recipient:  # no extra field from the recipient should exist
+        assert field not in columns
+    for field in extra_fields_for_donor:  # every extra field from the donor should exist...
+        assert field in columns
+        assert complementary_points[field].all() == 0  # ...but should be at 0
 
 
 def test_get_type():
@@ -288,81 +319,6 @@ def test_get_donor_from_csv(tmp_path_factory):
 
     donor_file_path = get_donor_from_csv(recipient_more_fields_test_path, csv_file_path)
     assert donor_file_path == donor_more_fields_test_path
-
-
-def test_get_donor_path(tmp_path_factory):
-    # check get_donor_path when no csv
-    with initialize(version_base="1.2", config_path="../configs"):
-        config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_SLIDED_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
-            ],
-        )
-        donor_dir, donor_name = get_donor_path(config)
-        assert donor_dir == DONOR_TEST_DIR
-        assert donor_name == DONOR_TEST_NAME
-
-    # check get_donor_path when csv but no matching donor in it
-    csv_file_dir = tmp_path_factory.mktemp("csv")
-    csv_file_name = "recipients_donors_links.csv"
-    csv_file_path = os.path.join(csv_file_dir, csv_file_name)
-
-    data = {c.COORDINATES_KEY: [], c.DONOR_FILE_KEY: [], c.RECIPIENT_FILE_KEY: []}
-    DataFrame(data=data).to_csv(csv_file_path)
-
-    with initialize(version_base="1.2", config_path="../configs"):
-        config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_SLIDED_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_SLIDED_TEST_NAME}",
-                f"filepath.CSV_DIRECTORY={csv_file_dir}",
-                f"filepath.CSV_NAME={csv_file_name}",
-            ],
-        )
-
-        donor_dir, donor_name = get_donor_path(config)
-        assert donor_dir == ""
-        assert donor_name == ""
-
-    # check get_donor_path when csv but with a matching donor in it
-    donor_more_fields_test_path = os.path.join(DONOR_MORE_FIELDS_TEST_DIR, DONOR_MORE_FIELDS_TEST_NAME)
-    recipient_more_fields_test_path = os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)
-    data = {
-        c.COORDINATES_KEY: [
-            COORDINATES,
-        ],
-        c.DONOR_FILE_KEY: [
-            donor_more_fields_test_path,
-        ],
-        c.RECIPIENT_FILE_KEY: [
-            recipient_more_fields_test_path,
-        ],
-    }
-    DataFrame(data=data).to_csv(csv_file_path)
-
-    with initialize(version_base="1.2", config_path="../configs"):
-        config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.DONOR_DIRECTORY={DONOR_TEST_DIR}",
-                f"filepath.DONOR_NAME={DONOR_TEST_NAME}",
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
-                f"filepath.CSV_DIRECTORY={csv_file_dir}",
-                f"filepath.CSV_NAME={csv_file_name}",
-            ],
-        )
-
-        donor_dir, donor_name = get_donor_path(config)
-        assert donor_dir == DONOR_MORE_FIELDS_TEST_DIR
-        assert donor_name == DONOR_MORE_FIELDS_TEST_NAME
 
 
 def test_patchwork_default(tmp_path_factory):

@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from shutil import copy2
 from typing import List, Tuple
 
@@ -14,7 +13,6 @@ from pdaltools.las_info import get_tile_origin_using_header_info
 import patchwork.constants as c
 from patchwork.indices_map import create_indices_map
 from patchwork.shapefile_data_extraction import get_donor_info_from_shapefile
-from patchwork.tools import crop_tile, get_tile_origin_from_pointcloud
 
 
 def get_selected_classes_points(
@@ -70,58 +68,60 @@ def get_type(new_column_size: int):
             raise ValueError(f"{new_column_size} is not a correct value for NEW_COLUMN_SIZE")
 
 
-def get_complementary_points(df_donor_info: gpd.GeoDataFrame, config: DictConfig) -> pd.DataFrame:
-    raise NotImplementedError("get_complementary_points needs to be adapted!")
-    donor_dir, donor_name = get_donor_path(config)
-    donor_file_path = os.path.join(donor_dir, donor_name)
-    recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
+def get_complementary_points(
+    df_donor_info: gpd.GeoDataFrame, recipient_file_path: str, tile_origin: Tuple[int, int], config: DictConfig
+) -> pd.DataFrame:
+    with laspy.open(recipient_file_path) as recipient_file:
+        recipient_points = recipient_file.read().points
 
-    with laspy.open(donor_file_path) as donor_file, laspy.open(recipient_file_path) as recipient_file:
-        raw_donor_points = donor_file.read().points
-        donor_points = crop_tile(config, raw_donor_points)
-        raw_recipient_points = recipient_file.read().points
-        recipient_points = crop_tile(config, raw_recipient_points)
+    df_recipient_points = get_selected_classes_points(
+        config, tile_origin, recipient_points, config.RECIPIENT_CLASS_LIST, []
+    )
 
-        # check if both files are on the same area
-        tile_origin_donor = get_tile_origin_from_pointcloud(config, donor_points)
-        tile_origin_recipient = get_tile_origin_using_header_info(
-            filename=recipient_file_path, tile_width=config.TILE_SIZE
-        )
-        if tile_origin_donor != tile_origin_recipient:
-            raise ValueError(
-                f"{donor_file_path} and \
-                             {recipient_file_path} are not on the same area"
+    # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
+    # should have no record for when count == 0, therefore "df_recipient_non_empty_patches" list all
+    # and only the patches with at least a point
+    # In other words, the next column should be filled with "False" everywhere
+    df_recipient_non_empty_patches = (
+        df_recipient_points.groupby(by=[c.PATCH_X_STR, c.PATCH_Y_STR]).count().classification == 0
+    )
+
+    dfs_donor_points = []
+
+    for index, row in df_donor_info.iterrows():
+        with laspy.open(row["full_path"]) as donor_file:
+            raw_donor_points = donor_file.read().points
+            points_loc_gdf = gpd.GeoDataFrame(
+                geometry=gpd.points_from_xy(raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS)
+            )
+            footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]])
+            points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
+            donor_points = raw_donor_points[points_in_footprint_gdf.index.values]
+
+            donor_columns = get_field_from_header(donor_file)
+            dfs_donor_points.append(
+                get_selected_classes_points(config, tile_origin, donor_points, config.DONOR_CLASS_LIST, donor_columns)
             )
 
-        donor_columns = get_field_from_header(donor_file)
-        df_donor_points = get_selected_classes_points(
-            config, tile_origin_donor, donor_points, config.DONOR_CLASS_LIST, donor_columns
-        )
-        df_recipient_points = get_selected_classes_points(
-            config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, []
-        )
+    if len(df_donor_info.index):
+        df_donor_points = pd.concat(dfs_donor_points)
 
-        # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
-        # should have no record for when count == 0, therefore "df_recipient_non_empty_patches" list all
-        # and only the patches with at least a point
-        # In other words, the next column should be filled with "False" everywhere
-        df_recipient_non_empty_patches = (
-            df_recipient_points.groupby(by=[c.PATCH_X_STR, c.PATCH_Y_STR]).count().classification == 0
-        )
+    else:
+        df_donor_points = gpd.GeoDataFrame(columns=["x", "y", "z", "patch_x", "patch_y", "classification"])
 
-        # for each (patch_x,patch_y) patch, we join to a donor point the count of recipient points on that patch
-        # since it's a left join, it keeps all the left record (all the donor points)
-        #  and put a "NaN" if the recipient point count is null (no record)
-        joined_patches = pd.merge(
-            df_donor_points,
-            df_recipient_non_empty_patches,
-            on=[c.PATCH_X_STR, c.PATCH_Y_STR],
-            how="left",
-            suffixes=("", config.RECIPIENT_SUFFIX),
-        )
+    # for each (patch_x,patch_y) patch, we join to a donor point the count of recipient points on that patch
+    # since it's a left join, it keeps all the left record (all the donor points)
+    #  and put a "NaN" if the recipient point count is null (no record)
+    joined_patches = pd.merge(
+        df_donor_points,
+        df_recipient_non_empty_patches,
+        on=[c.PATCH_X_STR, c.PATCH_Y_STR],
+        how="left",
+        suffixes=("", config.RECIPIENT_SUFFIX),
+    )
 
-        # only keep donor points in patches where there is no recipient point
-        return joined_patches.loc[joined_patches[c.CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
+    # only keep donor points in patches where there is no recipient point
+    return joined_patches.loc[joined_patches[c.CLASSIFICATION_STR + config.RECIPIENT_SUFFIX].isnull()]
 
 
 def get_field_from_header(las_file: LasReader) -> List[str]:
@@ -216,21 +216,6 @@ def get_donor_from_csv(recipient_file_path: str, csv_file_path: str) -> str:
         )
 
 
-def get_donor_path(config: DictConfig) -> Tuple[str, str]:
-    """Return a donor directory and a name:
-    If there is no csv file provided in config, return  DONOR_DIRECTORY and DONOR_NAME
-    if there is a csv file provided, return DONOR_DIRECTORY and DONOR_NAME matching the given RECIPIENT
-    if there is a csv file provided but no matching DONOR, return "" twice"""
-    if config.filepath.CSV_DIRECTORY and config.filepath.CSV_NAME:
-        csv_file_path = os.path.join(config.filepath.CSV_DIRECTORY, config.filepath.CSV_NAME)
-        recipient_file_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-        donor_file_path = get_donor_from_csv(recipient_file_path, csv_file_path)
-        if not donor_file_path:  # if there is no matching donor file, we do nothing
-            return "", ""
-        return str(Path(donor_file_path).parent), str(Path(donor_file_path).name)
-    return config.filepath.DONOR_DIRECTORY, config.filepath.DONOR_NAME
-
-
 def patchwork(config: DictConfig):
     recipient_filepath = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
     origin_x_meters, origin_y_meters = get_tile_origin_using_header_info(recipient_filepath, config.TILE_SIZE)
@@ -244,8 +229,10 @@ def patchwork(config: DictConfig):
         y_shapefile,
         config.filepath.DONOR_SUBDIRECTORY,
     )
-    raise NotImplementedError()
-    complementary_bd_points = get_complementary_points(donor_info_df, config)
+
+    complementary_bd_points = get_complementary_points(
+        donor_info_df, recipient_filepath, (origin_x_meters, origin_y_meters), config
+    )
 
     append_points(config, complementary_bd_points)
 
