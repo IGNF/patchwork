@@ -2,9 +2,4 @@
 CLASSIFICATION_STR = "classification"
 PATCH_X_STR = "patch_x"
 PATCH_Y_STR = "patch_y"
-DONOR_SUBDIRECTORY_NAME = "donor"
-RECIPIENT_SUBDIRECTORY_NAME = "recipient"
-
-COORDINATES_KEY = "coordinates"
-DONOR_FILE_KEY = "donor_file"
-RECIPIENT_FILE_KEY = "recipient_file"
+RECIPIENT_SUFFIX = "_recipient"
