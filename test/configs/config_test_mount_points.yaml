@@ -42,8 +42,11 @@ filepath:
 
 mount_points:
   - ORIGINAL_PATH: \\store\my-store  # WARNING: do NOT use quotes around the path if it contains \\
-    MOUNTED_PATH: /my_mounted_store/
+    MOUNTED_PATH: .
     ORIGINAL_PLATFORM_IS_WINDOWS: true
+  - ORIGINAL_PATH: /store/my-store  # WARNING: do NOT use quotes around the path if it contains \\
+    MOUNTED_PATH: .
+    ORIGINAL_PLATFORM_IS_WINDOWS: false
 
 CRS: 2154
 

@@ -406,3 +406,80 @@ def test_patchwork_with_origin(tmp_path_factory, recipient_path, expected_nb_add
         assert len(output_points) == len(recipient_points) + expected_nb_added_points
         assert np.sum(output_points.Origin == 0) == len(recipient_points)
         assert np.sum(output_points.Origin == 1) == expected_nb_added_points
+
+
+@pytest.mark.parametrize(
+    "input_shp_path, recipient_path, expected_nb_added_points",
+    # Same tests as "test_patchwork_default", but with shapefiles that refer to paths in mounted stores
+    [
+        (
+            "test/data/shapefile_mounted_unix_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            128675,
+        ),  # One donor / unix paths
+        (
+            "test/data/shapefile_mounted_unix_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            149490,
+        ),  # Two donors / unix paths
+        (
+            "test/data/shapefile_mounted_unix_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            0,
+        ),  # No donor / unix paths
+        (
+            "test/data/shapefile_mounted_windows_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            128675,
+        ),  # One donor / windows paths
+        (
+            "test/data/shapefile_mounted_windows_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            149490,
+        ),  # Two donors / windows paths
+        (
+            "test/data/shapefile_mounted_windows_path/patchwork_geometries.shp",
+            "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            0,
+        ),  # No donor / windows paths
+    ],
+)
+def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient_path, expected_nb_added_points):
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_output_las_name = "result_patchwork.laz"
+    tmp_output_indices_map_name = "result_patchwork_indices.tif"
+
+    with initialize(version_base="1.2", config_path="configs"):  # Use configs dir from test directory
+        config = compose(
+            config_name="config_test_mount_points.yaml",
+            overrides=[
+                f"filepath.RECIPIENT_DIRECTORY={os.path.dirname(recipient_path)}",
+                f"filepath.RECIPIENT_NAME={os.path.basename(recipient_path)}",
+                f"filepath.SHP_DIRECTORY={os.path.dirname(input_shp_path)}",
+                f"filepath.SHP_NAME={os.path.basename(input_shp_path)}",
+                f"filepath.OUTPUT_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_NAME={tmp_output_las_name}",
+                f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+                "NEW_COLUMN='Origin'",
+            ],
+        )
+        patchwork(config)
+        output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
+        indices_map_path = os.path.join(tmp_file_dir, tmp_output_indices_map_name)
+        assert os.path.isfile(output_path)
+        assert os.path.isfile(indices_map_path)
+
+        with laspy.open(recipient_path) as las_file:
+            recipient_points = las_file.read().points
+        with laspy.open(output_path) as las_file:
+            output_points = las_file.read().points
+            assert {n for n in las_file.header.point_format.dimension_names} == {
+                n for n in las_file.header.point_format.standard_dimension_names
+            } | {"Origin"}
+
+        assert len(output_points) == len(recipient_points) + expected_nb_added_points
+        assert np.sum(output_points.Origin == 0) == len(recipient_points)
+        assert np.sum(output_points.Origin == 1) == expected_nb_added_points

@@ -211,10 +211,7 @@ def patchwork(config: DictConfig):
 
     shapefile_path = os.path.join(config.filepath.SHP_DIRECTORY, config.filepath.SHP_NAME)
     donor_info_df = get_donor_info_from_shapefile(
-        shapefile_path,
-        x_shapefile,
-        y_shapefile,
-        config.filepath.DONOR_SUBDIRECTORY,
+        shapefile_path, x_shapefile, y_shapefile, config.filepath.DONOR_SUBDIRECTORY, config.mount_points
     )
 
     complementary_bd_points = get_complementary_points(
