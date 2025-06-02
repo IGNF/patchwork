@@ -31,14 +31,13 @@ filepath:
   OUTPUT_INDICES_MAP_DIR: null # path to the directory for the indices map reflecting the changes to the recipient, from patchwork
   OUTPUT_INDICES_MAP_NAME: null # name of the indices map reflecting the changes to the recipient, from patchwork
 
-  RECIPIENT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
+  RECIPIENT_DIRECTORY: null # directory containing the recipient file for patchwork
   RECIPIENT_NAME: null # name of the recipient file for patchwork
 
   # The input shapefile should contain a "nuage_mixa" attrubute for each geometry
-  # "nuage_mixa" contains the path to the folder that contains the path to the folder
-  # containing the files related to a specific donor source.
+  # "nuage_mixa" contains the path to the folder containing the files related to a specific donor source.
   # Laz/las files from this source are usually contained in a subdirectory of "nuage_mixa"
-  # path to this subdorectory can be configures using "DONOR_SUBDIRECTORY"
+  # path to this subdirectory can be configured using "DONOR_SUBDIRECTORY"
   DONOR_SUBDIRECTORY: "data"
 
 CRS: 2154
