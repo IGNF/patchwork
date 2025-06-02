@@ -7,9 +7,9 @@
 work_dir: ${hydra:runtime.cwd}
 
 # disable ouput directory from being created
-hydra:  
-  output_subdir: null  
-  run:  
+hydra:
+  output_subdir: null
+  run:
     dir: .
 
 # disable main.log from being created
@@ -19,37 +19,34 @@ defaults:
   - _self_
 
 filepath:
-  SHP_NAME: null # name of the shapefile for lidar selecter, to determine the lidar file to select
+  SHP_NAME: null # name of the shapefile used to match tiles to patch
   SHP_DIRECTORY: null # path to the directory containing the shapefile
-  DONOR_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
-  RECIPIENT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
-  OUTPUT_DIRECTORY: null # directory containing all potential donor lidar files, for lidar selecter
 
   OUTPUT_DIR: null # directory of the file with added points, from patchwork.
   OUTPUT_NAME: null # name of the file with added points, from patchwork.
- 
+
   INPUT_INDICES_MAP_DIR: null
   INPUT_INDICES_MAP_NAME: null
 
   OUTPUT_INDICES_MAP_DIR: null # path to the directory for the indices map reflecting the changes to the recipient, from patchwork
   OUTPUT_INDICES_MAP_NAME: null # name of the indices map reflecting the changes to the recipient, from patchwork
 
-  # INPUT_DIRECTORY: null # directory for input (shapefile) 
-  CSV_NAME: null # name of the csv file that log the lidar files to process with patchwork
-  CSV_DIRECTORY: null # path to the directory that will contain the csv
-
-  DONOR_NAME: null # name of the donor file for patchwork
+  RECIPIENT_DIRECTORY: null # directory containing the recipient file for patchwork
   RECIPIENT_NAME: null # name of the recipient file for patchwork
-  
 
+  # The input shapefile should contain a "nuage_mixa" attrubute for each geometry
+  # "nuage_mixa" contains the path to the folder containing the files related to a specific donor source.
+  # Laz/las files from this source are usually contained in a subdirectory of "nuage_mixa"
+  # path to this subdirectory can be configured using "DONOR_SUBDIRECTORY"
+  DONOR_SUBDIRECTORY: "data"
 
 CRS: 2154
 
 DONOR_CLASS_LIST: [2, 22]
 RECIPIENT_CLASS_LIST: [2, 6, 9, 17]
 
-RECIPIENT_SUFFIX: "_recipient"
 TILE_SIZE: 1000
+SHP_X_Y_TO_METER_FACTOR: 1000 # multiplication factor to convert shapefile x, y attributes values to meters
 PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so for 1000: 0.25, 0.5, 2, 4, 5, 10, 25...
 NEW_COLUMN: null # If not null, contains the name of the new column
 NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64

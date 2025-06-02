@@ -45,16 +45,3 @@ DONOR_CLASS_LIST : Défaut [2, 22]. La liste des classes des points du fichier d
 RECIPIENT_CLASS_LIST : Défaut [2, 3, 9, 17]. La liste des classes des points du fichier receveur qui, s'ils sont absents dans une cellule, justifirons de prendre les points du fichier donneur de la même cellule
 TILE_SIZE : Défaut 1000. Taille du côté de l'emprise carrée représentée par les fichiers lidar d'entrée
 PATCH_SIZE : Défaut 1. taille en mètre du côté d'une cellule (doit être un diviseur de TILE_SIZE, soit pour 1000 : 0.25, 0.5, 2, 4, 5, 10, 25...)
-
-Le script de sélection/découpe de fichier lidar peut être lancé via :
-```
-python lidar_selecter.py filepath.DONOR_DIRECTORY=[répertoire_fichiers_donneurs] filepath.RECIPIENT_DIRECTORY=[répertoire_fichiers_receveurs] filepath.SHP_NAME=[nom_shapefile] filepath.SHP_DIRECTORY=[répertoire_shapefile] filepath.CSV_NAME=[nom_fichier_csv] filepath.CSV_DIRECTORY=[répertoire_fichier_csv] filepath.OUTPUT_DIRECTORY=[chemin_de_sortie]
-```
-
-filepath.DONOR_DIRECTORY: Le répertoire contenant les fichiers lidar donneurs
-filepath.RECIPIENT_DIRECTORY: Le répertoire contenant les fichiers lidar receveurs
-filepath.SHP_NAME: Le nom du shapefile contenant l'emprise du chantier qui délimite les fichiers lidar qui nous intéressent
-filepath.SHP_DIRECTORY: Le répertoire du fichier shapefile
-filepath.CSV_NAME: Le nom du fichier csv qui lie les différents fichiers donneurs et receveurs
-filepath.CSV_DIRECTORY: Le répertoire du fichier csv
-filepath.OUTPUT_DIRECTORY: le répertoire recevant les fichiers lidar découpés
