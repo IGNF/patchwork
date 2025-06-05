@@ -61,7 +61,6 @@ def test_create_indices_map(tmp_path_factory):
         grid = raster.read()
 
         grid = grid.transpose()  # indices aren't read the way we want otherwise
-        print(grid)
 
         for point in POINTS_IN_GRID:
             assert grid[point] == 1

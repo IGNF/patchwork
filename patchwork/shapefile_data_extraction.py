@@ -1,10 +1,16 @@
 import fnmatch
 import os
+from typing import Dict, List
 
 import geopandas as gpd
+from omegaconf import DictConfig
+
+from patchwork.path_manipulation import get_mounted_path_from_raw_path
 
 
-def get_donor_info_from_shapefile(input_shapefile: str, x: int, y: int, tile_subdirectory: str) -> gpd.GeoDataFrame:
+def get_donor_info_from_shapefile(
+    input_shapefile: str, x: int, y: int, tile_subdirectory: str, mount_points: List[Dict] | DictConfig
+) -> gpd.GeoDataFrame:
     """Retrieve paths to all the donor files associated with a given tile (with origin x, y) from a shapefile.
 
     The shapefile should contain one geometry per donor file, with attributes:
@@ -20,6 +26,13 @@ def get_donor_info_from_shapefile(input_shapefile: str, x: int, y: int, tile_sub
 
     It is stored in the "full_path" column of the output geodataframe
 
+    The mount_point dictionaries should contains these keys:
+    - ORIGINAL_PATH (str): Original path of the mounted directory (root of the raw path to replace)
+    - MOUNTED_PATH (str): Mounted path of the directory (root path by which to replace the root of the raw path
+    in order to access to the directory on the current computer)
+    - ORIGINAL_PLATFORM_IS_WINDOWS (bool): true if the raw path should be interpreted as a windows path
+    when using this mount point
+
     Args:
         input_shapefile (str): Shapefile describing donor files
         x (int): x coordinate of the tile for which to get the donors
@@ -27,6 +40,9 @@ def get_donor_info_from_shapefile(input_shapefile: str, x: int, y: int, tile_sub
         y (int): y coordinate of the tile for which to get the donors
         (in the same unit as in the shapefile, usually km)
         tile_subdirectory (str): subdirectory of "nuage_mixa" in which the donor files are stored
+        mount_points (List[Dict]): dictionaries describing the mount points to use to interpret paths from "nuage_mixa"
+        in case the path is related to a distant folder that can be mounted in different ways *(cf. dictionary
+        structure above)
 
     Raises:
         NotImplementedError: if nom_coord is false (case not handled)
@@ -51,8 +67,9 @@ def get_donor_info_from_shapefile(input_shapefile: str, x: int, y: int, tile_sub
 
     if len(gdf.index):
 
-        def find_las_path_from_geometry_attributes(x: int, y: int, path_root: str):
-            tile_directory = os.path.join(path_root, tile_subdirectory)
+        def find_las_path_from_geometry_attributes(x: int, y: int, path_root: str, mount_points: List[Dict]):
+            mounted_path_root = get_mounted_path_from_raw_path(path_root, mount_points)
+            tile_directory = os.path.join(mounted_path_root, tile_subdirectory)
             if not os.path.isdir(tile_directory):
                 raise FileNotFoundError(f"Directory {tile_directory} not found")
             potential_filenames = fnmatch.filter(os.listdir(tile_directory), f"*{x}_{y}*.la[sz]")
@@ -68,10 +85,9 @@ def get_donor_info_from_shapefile(input_shapefile: str, x: int, y: int, tile_sub
             return os.path.join(tile_directory, potential_filenames[0])
 
         gdf["full_path"] = gdf.apply(
-            lambda row: find_las_path_from_geometry_attributes(row["x"], row["y"], row["nuage_mixa"]),
+            lambda row: find_las_path_from_geometry_attributes(row["x"], row["y"], row["nuage_mixa"], mount_points),
             axis="columns",
         )
-
     else:
         gdf = gpd.GeoDataFrame(columns=["x", "y", "full_path", "geometry"])
 

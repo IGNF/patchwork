@@ -1,5 +1,6 @@
 # CHANGELOG
-
+- Possibilité d'utiliser des points de montage pour rediriger les chemins donnés dans le shapefile vers un autre dossier
+- [Breaking change] Utilisation d'un shapefile pour définir les fichiers donneurs à utiliser pour chaque zone
 - génération de la carte d'indice même quand il n'y a pas de points à ajouter
 
 ## 1.1.1
