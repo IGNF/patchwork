@@ -1,4 +1,6 @@
 # CHANGELOG
+
+## 1.2.0
 - mise à jour de laspy pour le correctif de la fonction `append_points`
 - Possibilité d'utiliser des points de montage pour rediriger les chemins donnés dans le shapefile vers un autre dossier
 - [Breaking change] Utilisation d'un shapefile pour définir les fichiers donneurs à utiliser pour chaque zone
