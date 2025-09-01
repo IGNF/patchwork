@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 1.2.1
+- Ajout de gdal dans l'image docker (fichiers manquant pour l'utiliser en ligne de commande)
+
 ## 1.2.0
 - mise à jour de laspy pour le correctif de la fonction `append_points`
 - Possibilité d'utiliser des points de montage pour rediriger les chemins donnés dans le shapefile vers un autre dossier
