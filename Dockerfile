@@ -11,8 +11,11 @@ RUN micromamba env create -n patchwork -f /environment.yml
 # Start from raw debian image to lower the final image size
 FROM debian:bullseye-slim
 
-# install PDAL + mamba environment
+# install PDAL
 COPY --from=mamba_pdal /opt/conda/envs/patchwork/bin/pdal /opt/conda/envs/patchwork/bin/pdal
+# install GDAL
+COPY --from=mamba_pdal /opt/conda/envs/patchwork/bin/*gdal* /opt/conda/envs/patchwork/bin/
+# install mamba environment
 COPY --from=mamba_pdal /opt/conda/envs/patchwork/bin/python /opt/conda/envs/patchwork/bin/python
 COPY --from=mamba_pdal /opt/conda/envs/patchwork/lib/ /opt/conda/envs/patchwork/lib/
 COPY --from=mamba_pdal /opt/conda/envs/patchwork/ssl /opt/conda/envs/patchwork/ssl
