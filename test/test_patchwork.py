@@ -18,7 +18,7 @@ from patchwork.patchwork import (
     patchwork,
 )
 
-RECIPIENT_TEST_DIR = "test/data/"
+TEST_DATA_DIR = "test/data/"
 RECIPIENT_TEST_NAME = "recipient_test.laz"
 
 DONOR_CLASS_LIST = [2, 9]
@@ -29,37 +29,79 @@ POINT_2 = {"x": 5, "y": 6, "z": 7, c.CLASSIFICATION_STR: 8}
 NEW_COLUMN = "virtual_column"
 NEW_COLUMN_SIZE = 8
 VALUE_ADDED_POINTS = 1
+TILE_SIZE = 1000
+PATCH_SIZE = 1
 
 SHP_X_Y_TO_METER_FACTOR = 1000
 
 
 def test_get_field_from_header():
-    with laspy.open(os.path.join(RECIPIENT_TEST_DIR, RECIPIENT_TEST_NAME)) as recipient_file:
+    with laspy.open(os.path.join(TEST_DATA_DIR, RECIPIENT_TEST_NAME)) as recipient_file:
         recipient_fields_list = get_field_from_header(recipient_file)
         assert len(recipient_fields_list) == 18
         # check if all fields are lower case
         assert [field for field in recipient_fields_list if field != field.lower()] == []
 
 
-def test_get_selected_classes_points():
-    with initialize(version_base="1.2", config_path="../configs"):
-        config = compose(
-            config_name="configs_patchwork.yaml",
-            overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
-                f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
-                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
-            ],
+@pytest.mark.parametrize(
+    "las_path, class_list, fields_to_keep, use_synthetic",
+    [
+        # Keep all points
+        (os.path.join(TEST_DATA_DIR, RECIPIENT_TEST_NAME), [1, 2, 3, 4, 5], ["synthetic", "intensity"], True),
+        # Filter on class only
+        (os.path.join(TEST_DATA_DIR, RECIPIENT_TEST_NAME), [2, 3], ["synthetic", "intensity"], True),
+        # Filter out synthetic points
+        (os.path.join(TEST_DATA_DIR, RECIPIENT_TEST_NAME), [2, 3], ["synthetic", "x"], False),
+    ],
+)
+def test_get_selected_classes_points(las_path, class_list, fields_to_keep, use_synthetic):
+    tile_origin = get_tile_origin_using_header_info(las_path, TILE_SIZE)
+    with laspy.open(las_path) as recipient_file:
+        input_points = recipient_file.read().points
+        df_output_points = get_selected_classes_points(
+            tile_origin,
+            input_points,
+            class_list,
+            fields_to_keep=fields_to_keep,
+            use_synthetic_points=use_synthetic,
+            patch_size=PATCH_SIZE,
+            tile_size=TILE_SIZE,
         )
-        recipient_path = os.path.join(config.filepath.RECIPIENT_DIRECTORY, config.filepath.RECIPIENT_NAME)
-        tile_origin_recipient = get_tile_origin_using_header_info(recipient_path, config.TILE_SIZE)
-        with laspy.open(recipient_path) as recipient_file:
-            recipient_points = recipient_file.read().points
-            df_recipient_points = get_selected_classes_points(
-                config, tile_origin_recipient, recipient_points, config.RECIPIENT_CLASS_LIST, []
+        assert len(df_output_points.index), "No points in output dataframe"
+        classification = set(df_output_points[c.CLASSIFICATION_STR])
+        assert classification.issubset(class_list)
+        assert set(df_output_points.columns.values) == {
+            *fields_to_keep,
+            c.PATCH_X_STR,
+            c.PATCH_Y_STR,
+            c.CLASSIFICATION_STR,
+        }
+        if use_synthetic:
+            assert len(df_output_points.index) == np.count_nonzero(
+                np.isin(np.array(input_points.classification), class_list)
             )
-            for classification in np.unique(df_recipient_points[c.CLASSIFICATION_STR]):
-                assert classification in RECIPIENT_CLASS_LIST
+        else:
+            assert not np.any(df_output_points.synthetic)
+
+
+def test_get_selected_classes_points_raise_error():
+    las_path = os.path.join(TEST_DATA_DIR, "recipient_with_synthetic_points.laz")
+    class_list = [2, 3]
+    fields_to_keep = []
+    use_synthetic = False
+    tile_origin = get_tile_origin_using_header_info(las_path, TILE_SIZE)
+    with pytest.raises(NotImplementedError):
+        with laspy.open(las_path) as las_path:
+            input_points = las_path.read().points
+            get_selected_classes_points(
+                tile_origin,
+                input_points,
+                class_list,
+                fields_to_keep=fields_to_keep,
+                use_synthetic_points=use_synthetic,
+                patch_size=PATCH_SIZE,
+                tile_size=TILE_SIZE,
+            )
 
 
 @pytest.mark.parametrize(
@@ -104,6 +146,7 @@ def test_get_complementary_points(donor_info_path, recipient_path, x, y, expecte
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                "DONOR_USE_SYNTHETIC_POINTS=true",
             ],
         )
         complementary_points = get_complementary_points(df_donor_info, recipient_path, (x, y), config)
@@ -157,6 +200,7 @@ def test_get_complementary_points_2_more_fields(tmp_path_factory):
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                "DONOR_USE_SYNTHETIC_POINTS=true",
             ],
         )
 
@@ -193,7 +237,7 @@ def test_append_points(tmp_path_factory):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
+                f"filepath.RECIPIENT_DIRECTORY={TEST_DATA_DIR}",
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_file_name}",
@@ -251,7 +295,7 @@ def test_append_points_new_column(tmp_path_factory):
         config = compose(
             config_name="configs_patchwork.yaml",
             overrides=[
-                f"filepath.RECIPIENT_DIRECTORY={RECIPIENT_TEST_DIR}",
+                f"filepath.RECIPIENT_DIRECTORY={TEST_DATA_DIR}",
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_file_name}",
@@ -326,6 +370,7 @@ def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_p
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                "DONOR_USE_SYNTHETIC_POINTS=true",
                 "NEW_COLUMN=null",
             ],
         )
@@ -346,7 +391,7 @@ def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_p
 
 
 @pytest.mark.parametrize(
-    "recipient_path, expected_nb_added_points",
+    "recipient_path, donor_use_synthetic_points, expected_nb_added_points",
     # expected_nb_points value set after inspection of the initial result using qgis:
     # - there are points only inside the shapefile geometry
     # - when visualizing a grid, there seems to be no points in the cells where there is ground points in the
@@ -354,19 +399,32 @@ def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_p
     [
         (
             "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            True,
             128675,
         ),  # One donor
         (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6362_LA93_IGN69_decimated.laz",
+            False,
+            127961,
+        ),  # One donor, no synthetic points
+        (
             "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            True,
             149490,
         ),  # Two donors
         (
+            "test/data/lidar_HD_decimated/Semis_2022_0673_6363_LA93_IGN69_decimated.laz",
+            False,
+            149340,
+        ),  # Two donors, no synthetic points
+        (
             "test/data/lidar_HD_decimated/Semis_2022_0674_6363_LA93_IGN69_decimated.laz",
+            True,
             0,
         ),  # No donor
     ],
 )
-def test_patchwork_with_origin(tmp_path_factory, recipient_path, expected_nb_added_points):
+def test_patchwork_with_origin(tmp_path_factory, recipient_path, donor_use_synthetic_points, expected_nb_added_points):
     input_shp_path = "test/data/shapefile_local/patchwork_geometries.shp"
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork.laz"
@@ -386,6 +444,7 @@ def test_patchwork_with_origin(tmp_path_factory, recipient_path, expected_nb_add
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+                f"DONOR_USE_SYNTHETIC_POINTS={donor_use_synthetic_points}",
                 "NEW_COLUMN='Origin'",
             ],
         )
@@ -411,6 +470,7 @@ def test_patchwork_with_origin(tmp_path_factory, recipient_path, expected_nb_add
 @pytest.mark.parametrize(
     "input_shp_path, recipient_path, expected_nb_added_points",
     # Same tests as "test_patchwork_default", but with shapefiles that refer to paths in mounted stores
+    # All tests keep synthetic points
     [
         (
             "test/data/shapefile_mounted_unix_path/patchwork_geometries.shp",
