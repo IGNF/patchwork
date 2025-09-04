@@ -1,5 +1,6 @@
 # CHANGELOG
 
+## 1.3.0
 - Possibilité d'ignorer les points synthétiques du fichier donneur (paramètre DONOR_USE_SYNTHETIC_POINTS dans le fichier de config)
 
 ## 1.2.1
