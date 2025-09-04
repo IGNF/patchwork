@@ -16,41 +16,68 @@ from patchwork.shapefile_data_extraction import get_donor_info_from_shapefile
 
 
 def get_selected_classes_points(
-    config: DictConfig,
     tile_origin: Tuple[int, int],
     points_list: ScaleAwarePointRecord,
     class_list: list[int],
+    use_synthetic_points: bool,
     fields_to_keep: list[str],
+    patch_size: int,
+    tile_size: int,
 ) -> pd.DataFrame:
-    """get a list of points from a las, and return a ndarray of those point with the selected classification"""
+    """Get a list of points from a las, filter them based on classification an d synthetic flag
+    and return them as a pandas dataframe
 
+    Args:
+        tile_origin (Tuple[int, int]): Origin point of the tile (in meters)
+        points_list (ScaleAwarePointRecord): Points list in laspy format
+        class_list (list[int]): List of classes to keep
+        use_synthetic_points (bool): if false, filter out points with flag "synthetic" = True
+        fields_to_keep (list[str]): Las file attribute to keep in the output dataframe
+        patch_size (int): Size of the patches (for discretization)
+        tile_size (int): Size of the tile
+
+    Raises:
+        NotImplementedError: Filtering out synthetic points is implemented only
+        if the synthetic field is in fields_to_keep
+
+    Returns:
+        pd.DataFrame: Filtered points list as a pd.DataFrame
+    """
     # we add automatically classification, so we remove it if it's in field_to_keep
     if c.CLASSIFICATION_STR in fields_to_keep:
         fields_to_keep.remove(c.CLASSIFICATION_STR)
 
     table_fields_to_keep = [points_list[field] for field in fields_to_keep]
     table_field_necessary = [
-        np.int32(points_list.x / config.PATCH_SIZE),  # convert x into the coordinate of the patch
-        np.int32(points_list.y / config.PATCH_SIZE),  # convert y into the coordinate of the patch
+        np.int32(points_list.x / patch_size),  # convert x into the coordinate of the patch
+        np.int32(points_list.y / patch_size),  # convert y into the coordinate of the patch
         points_list.classification,
     ]
+    all_fields_list = [*fields_to_keep, c.PATCH_X_STR, c.PATCH_Y_STR, c.CLASSIFICATION_STR]
 
     all_classes_points = np.array(table_fields_to_keep + table_field_necessary).transpose()
+    df_points = pd.DataFrame(all_classes_points, columns=all_fields_list)
 
-    mask = np.zeros(len(all_classes_points), dtype=bool)
-    for classification in class_list:
-        mask = mask | (all_classes_points[:, -1] == classification)
-    wanted_classes_points = all_classes_points[mask]
-    all_fields_list = [*fields_to_keep, c.PATCH_X_STR, c.PATCH_Y_STR, c.CLASSIFICATION_STR]
-    df_wanted_classes_points = pd.DataFrame(wanted_classes_points, columns=all_fields_list)
+    # Filter points based on classification
+    df_points = df_points[df_points.classification.isin(class_list)]
+
+    # Filter based on if the point is synthetic
+    if not use_synthetic_points:
+        if "synthetic" in fields_to_keep:
+            df_points = df_points[np.logical_not(df_points.synthetic)]
+        else:
+            raise NotImplementedError(
+                "'get_selected_classes_points' is asked to filter on synthetic flag, "
+                "but this flag is not in fields to keep."
+            )
 
     # "push" the points on the limit of the tile to the closest patch
-    mask_points_on_max_x = df_wanted_classes_points[c.PATCH_X_STR] == tile_origin[0] + config.TILE_SIZE
-    df_wanted_classes_points.loc[mask_points_on_max_x, c.PATCH_X_STR] = tile_origin[0] + config.TILE_SIZE - 1
-    mask_points_on_max_y = df_wanted_classes_points[c.PATCH_Y_STR] == tile_origin[1]
-    df_wanted_classes_points.loc[mask_points_on_max_y, c.PATCH_Y_STR] = tile_origin[1] - 1
+    mask_points_on_max_x = df_points[c.PATCH_X_STR] == tile_origin[0] + tile_size
+    df_points.loc[mask_points_on_max_x, c.PATCH_X_STR] = tile_origin[0] + tile_size - 1
+    mask_points_on_max_y = df_points[c.PATCH_Y_STR] == tile_origin[1]
+    df_points.loc[mask_points_on_max_y, c.PATCH_Y_STR] = tile_origin[1] - 1
 
-    return df_wanted_classes_points
+    return df_points
 
 
 def get_type(new_column_size: int):
@@ -75,7 +102,13 @@ def get_complementary_points(
         recipient_points = recipient_file.read().points
 
     df_recipient_points = get_selected_classes_points(
-        config, tile_origin, recipient_points, config.RECIPIENT_CLASS_LIST, []
+        tile_origin,
+        recipient_points,
+        config.RECIPIENT_CLASS_LIST,
+        use_synthetic_points=True,
+        fields_to_keep=[],
+        patch_size=config.PATCH_SIZE,
+        tile_size=config.TILE_SIZE,
     )
 
     # set, for each patch of coordinate (patch_x, patch_y), the number of recipient point
@@ -100,7 +133,15 @@ def get_complementary_points(
 
             donor_columns = get_field_from_header(donor_file)
             dfs_donor_points.append(
-                get_selected_classes_points(config, tile_origin, donor_points, config.DONOR_CLASS_LIST, donor_columns)
+                get_selected_classes_points(
+                    tile_origin,
+                    donor_points,
+                    config.DONOR_CLASS_LIST,
+                    config.DONOR_USE_SYNTHETIC_POINTS,
+                    donor_columns,
+                    patch_size=config.PATCH_SIZE,
+                    tile_size=config.TILE_SIZE,
+                )
             )
 
     if len(df_donor_info.index):

@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- Possibilité d'ignorer les points synthétiques du fichier donneur (paramètre DONOR_USE_SYNTHETIC_POINTS dans le fichier de config)
+
 ## 1.2.1
 - Ajout de gdal dans l'image docker (fichiers manquant pour l'utiliser en ligne de commande)
 
