@@ -23,7 +23,7 @@ RECIPIENT_TEST_NAME = "recipient_test.laz"
 
 DONOR_CLASS_LIST = [2, 9]
 RECIPIENT_CLASS_LIST = [2, 3, 9, 17]
-VIRTUAL_CLASS_TRANSLATION = {2: 69, 9: 70}
+DONOR_CLASS_TRANSLATION = {2: 69, 9: 70}
 POINT_1 = {"x": 1, "y": 2, "z": 3, c.CLASSIFICATION_STR: 4}
 POINT_2 = {"x": 5, "y": 6, "z": 7, c.CLASSIFICATION_STR: 8}
 NEW_COLUMN = "virtual_column"
@@ -145,7 +145,7 @@ def test_get_complementary_points(donor_info_path, recipient_path, x, y, expecte
             overrides=[
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
-                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                f"+DONOR_CLASS_TRANSLATION={DONOR_CLASS_TRANSLATION}",
                 "DONOR_USE_SYNTHETIC_POINTS=true",
             ],
         )
@@ -199,7 +199,7 @@ def test_get_complementary_points_2_more_fields(tmp_path_factory):
             overrides=[
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
-                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                f"+DONOR_CLASS_TRANSLATION={DONOR_CLASS_TRANSLATION}",
                 "DONOR_USE_SYNTHETIC_POINTS=true",
             ],
         )
@@ -233,6 +233,9 @@ def test_append_points(tmp_path_factory):
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_file_name = "result.laz"
 
+    donor_class_list = [4, 8]
+    donor_class_translation = {4: 44, 8: 88}
+
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
             config_name="configs_patchwork.yaml",
@@ -241,6 +244,8 @@ def test_append_points(tmp_path_factory):
                 f"filepath.RECIPIENT_NAME={RECIPIENT_TEST_NAME}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_NAME={tmp_file_name}",
+                f"DONOR_CLASS_LIST={donor_class_list}",
+                f"+DONOR_CLASS_TRANSLATION={donor_class_translation}",
             ],
         )
 
@@ -266,6 +271,12 @@ def test_append_points(tmp_path_factory):
         for point in las_recipient.points[:10]:  # only 10 points, otherwise it takes too long
             assert point in las_output.points
 
+        # Original class of the first added points is 4, turned to 44 by DONOR_CLASS_TRANSLATION
+        assert las_output.points[-2][c.CLASSIFICATION_STR] == 44
+
+        # Original class of the second added points is 8, turned to 88 by DONOR_CLASS_TRANSLATION
+        assert las_output.points[-1][c.CLASSIFICATION_STR] == 88
+
         # add 1 point
         extra_points = pd.DataFrame(
             data=[
@@ -282,7 +293,7 @@ def test_append_points(tmp_path_factory):
         extra_points = pd.DataFrame(data={"x": [], "y": [], "z": [], c.CLASSIFICATION_STR: []})
         append_points(config, extra_points)
 
-        # assert a point has been added
+        # assert no point has been added
         point_count = get_point_count(recipient_file_path)
         assert get_point_count(output_file) == point_count
 
@@ -369,7 +380,7 @@ def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_p
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
-                f"+VIRTUAL_CLASS_TRANSLATION={VIRTUAL_CLASS_TRANSLATION}",
+                f"+DONOR_CLASS_TRANSLATION={DONOR_CLASS_TRANSLATION}",
                 "DONOR_USE_SYNTHETIC_POINTS=true",
                 "NEW_COLUMN=null",
             ],
@@ -429,6 +440,7 @@ def test_patchwork_with_origin(tmp_path_factory, recipient_path, donor_use_synth
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork.laz"
     tmp_output_indices_map_name = "result_patchwork_indices.tif"
+    donor_class_translation = {2: 2, 9: 9}
 
     with initialize(version_base="1.2", config_path="../configs"):
         config = compose(
@@ -443,6 +455,7 @@ def test_patchwork_with_origin(tmp_path_factory, recipient_path, donor_use_synth
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"+DONOR_CLASS_TRANSLATION={donor_class_translation}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 f"DONOR_USE_SYNTHETIC_POINTS={donor_use_synthetic_points}",
                 "NEW_COLUMN='Origin'",
@@ -508,6 +521,7 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork.laz"
     tmp_output_indices_map_name = "result_patchwork_indices.tif"
+    donor_class_translation = {2: 11, 9: 11}
 
     with initialize(version_base="1.2", config_path="configs"):  # Use configs dir from test directory
         config = compose(
@@ -522,6 +536,7 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
                 f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"+DONOR_CLASS_TRANSLATION={donor_class_translation}",
                 f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
                 "NEW_COLUMN='Origin'",
             ],
@@ -543,3 +558,6 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
         assert len(output_points) == len(recipient_points) + expected_nb_added_points
         assert np.sum(output_points.Origin == 0) == len(recipient_points)
         assert np.sum(output_points.Origin == 1) == expected_nb_added_points
+
+        assert np.all(output_points.classification[output_points.Origin == 1] == 11)
+        assert not np.any(output_points.classification[output_points.Origin == 0] == 11)

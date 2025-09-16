@@ -61,5 +61,5 @@ PATCH_SIZE: 1 # size of a patch of the grid. Must be a divisor of TILE_SIZE, so 
 NEW_COLUMN: null # If not null, contains the name of the new column
 NEW_COLUMN_SIZE: 8  # must be 8, 16, 32 or 64
 VALUE_ADDED_POINTS: 1 # in case of a new column, value of the new point (the other are set to 0)
-VIRTUAL_CLASS_TRANSLATION: {2: 69, 22: 70}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
-# each value of  DONOR_CLASS_LIST must be a key in VIRTUAL_CLASS_TRANSLATION. Not used if NEW_COLUMN is not None (or "")
+DONOR_CLASS_TRANSLATION: {2: 2, 22: 2}  # if there is no new column, translate the class of DONOR_CLASS_LIST into those values
+# each value of  DONOR_CLASS_LIST must be a key in DONOR_CLASS_TRANSLATION. Not used if NEW_COLUMN is not None (or "")
