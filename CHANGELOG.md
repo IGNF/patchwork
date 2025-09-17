@@ -1,5 +1,10 @@
 # CHANGELOG
 
+- **Changement de comportement** :
+    Le champ "DONOR_CLASS_TRANSLATION" décrit maintenant l'association entre les classes du fichier donneur et les classes correspondantes dans le fichier de sortie. Au lieu de choisir entre ajouter une colonne et modifier les classes entre le fichier de donneur et le fichier de sortie, on applique maintenant les 2 traitements :
+        - Si "NEW_COLUMN" est non nul, on ajoute une dimension décrivant l'origine du fichier
+        - Les classes des points issus du fichier donneur sont converties via le dictionnaire "DONOR_CLASS_TRANSLATION" au moment de l'ajout des points au fichier de sortie.
+
 ## 1.3.0
 - Possibilité d'ignorer les points synthétiques du fichier donneur (paramètre DONOR_USE_SYNTHETIC_POINTS dans le fichier de config)
 

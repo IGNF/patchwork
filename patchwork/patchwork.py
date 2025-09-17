@@ -228,15 +228,14 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
         for field in fields_to_keep:
             new_points[field] = extra_points[field].astype(new_points[field])
 
-        if not config.NEW_COLUMN:
-            # translate the classification values:
-            for classification in config.DONOR_CLASS_LIST:
-                new_classification = config.VIRTUAL_CLASS_TRANSLATION[classification]
-                extra_points.loc[extra_points[c.CLASSIFICATION_STR] == classification, c.CLASSIFICATION_STR] = (
-                    new_classification
-                )
+        # translate the classification values:
+        for classification in config.DONOR_CLASS_LIST:
+            new_classification = config.DONOR_CLASS_TRANSLATION[classification]
+            extra_points.loc[extra_points[c.CLASSIFICATION_STR] == classification, c.CLASSIFICATION_STR] = (
+                new_classification
+            )
 
-        else:
+        if config.NEW_COLUMN:
             extra_points[config.NEW_COLUMN] = config.VALUE_ADDED_POINTS
             new_points[config.NEW_COLUMN] = extra_points[config.NEW_COLUMN]
 
