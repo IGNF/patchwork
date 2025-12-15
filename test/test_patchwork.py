@@ -561,3 +561,37 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
 
         assert np.all(output_points.classification[output_points.Origin == 1] == 11)
         assert not np.any(output_points.classification[output_points.Origin == 0] == 11)
+
+def test_patchwork_with_different_las(tmp_path_factory):
+
+    recipient_path=  "test/data/grand_geneve/lidar_HD_decimate/Semis_2021_0963_6543_LA93_IGN69_decimate.laz"
+    input_shp_path = "test/data/grand_geneve/geometry_GrandGeneve/zones.geojson"
+    tmp_file_dir = tmp_path_factory.mktemp("data")
+    tmp_output_las_name = "result_patchwork_different_las.laz"
+    tmp_output_indices_map_name = "result_patchwork_indices.tif"
+    donor_class_translation = {2: 2, 9: 9}
+
+    with initialize(version_base="1.2", config_path="../configs"):
+        config = compose(
+            config_name="configs_patchwork.yaml",
+            overrides=[
+                f"filepath.RECIPIENT_DIRECTORY={os.path.dirname(recipient_path)}",
+                f"filepath.RECIPIENT_NAME={os.path.basename(recipient_path)}",
+                f"filepath.SHP_DIRECTORY={os.path.dirname(input_shp_path)}",
+                f"filepath.SHP_NAME={os.path.basename(input_shp_path)}",
+                f"filepath.OUTPUT_DIR={tmp_file_dir}",
+                f"filepath.DONOR_SUBDIRECTORY=''",
+                f"filepath.OUTPUT_NAME={tmp_output_las_name}",
+                f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
+                f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
+                f"DONOR_CLASS_LIST={DONOR_CLASS_LIST}",
+                f"+DONOR_CLASS_TRANSLATION={donor_class_translation}",
+                f"RECIPIENT_CLASS_LIST={RECIPIENT_CLASS_LIST}",
+                f"DONOR_USE_SYNTHETIC_POINTS={False}",
+                "NEW_COLUMN='Origin'",
+            ],
+        )
+        patchwork(config)
+
+    output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
+    assert os.path.isfile(output_path)

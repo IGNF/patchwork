@@ -150,6 +150,11 @@ def get_complementary_points(
     else:
         df_donor_points = gpd.GeoDataFrame(columns=["x", "y", "z", "patch_x", "patch_y", "classification"])
 
+    #remove columns that contains NaN (especially when las files are from different versions)  
+    df_donor_points = df_donor_points.dropna(axis=1)
+    # and verrify that colums x, y, z, patch_x, patch_y, classification are in the dataframe 
+    assert all(col in df_donor_points.columns for col in ["x", "y", "z", "patch_x", "patch_y", "classification"])
+
     # for each (patch_x,patch_y) patch, we join to a donor point the count of recipient points on that patch
     # since it's a left join, it keeps all the left record (all the donor points)
     #  and put a "NaN" if the recipient point count is null (no record)
