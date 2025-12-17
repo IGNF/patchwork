@@ -13,6 +13,7 @@ from patchwork.patchwork import (
     append_points,
     get_complementary_points,
     get_field_from_header,
+    get_common_las_columns,
     get_selected_classes_points,
     get_type,
     patchwork,
@@ -561,6 +562,18 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
 
         assert np.all(output_points.classification[output_points.Origin == 1] == 11)
         assert not np.any(output_points.classification[output_points.Origin == 0] == 11)
+
+@pytest.mark.parametrize(
+    "las_liste",
+    [
+        (["test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6363_LAMB93_IGN69_20170519.laz", "test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6364_LAMB93_IGN69_20170519.laz"]),
+        (['test/data/grand_geneve/grand_geneve_BD/data/NUALID_1-0_DS19RFAN_PTS_0963_6543_LAMB93_IGN69_20191002.laz', 'test/data/grand_geneve/grand_geneve_BD/data2/0963_6543.laz']),
+    ],
+)
+def test_get_common_las_columns(las_liste):
+    common_columns = get_common_las_columns(las_liste)
+    assert all(col in common_columns for col in ["x", "y", "z", "classification", "gps_time", "intensity", "return_number", "number_of_returns"])
+
 
 def test_patchwork_with_different_las_format(tmp_path_factory):
 
