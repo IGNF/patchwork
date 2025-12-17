@@ -136,6 +136,7 @@ def get_complementary_points(
     )
 
     dfs_donor_points = []
+    
     if len(df_donor_info.index):
         donor_common_columns = get_common_donor_columns(df_donor_info)
         for index, row in df_donor_info.iterrows():
