@@ -1,7 +1,7 @@
 # CHANGELOG
 
 ## dev
-- fix lorsque les las donneurs ne sont pas de même version (1.2 et 1.4): on supprime les colomnes avec des NaN, tout en s'assurant que les colomnes de bases soient toujours présentes.
+- fix lorsque les las donneurs ne sont pas de même version (1.2 et 1.4): on ne garde que les attributs communs, en s'assurant que l'on conserve les attributs essentiels
 
 ## 1.4.0
 - **Changement de comportement** :
