@@ -95,6 +95,26 @@ def get_type(new_column_size: int):
             raise ValueError(f"{new_column_size} is not a correct value for NEW_COLUMN_SIZE")
 
 
+def get_common_donor_columns(df_donor_info: gpd.GeoDataFrame) -> List[str]:
+    """Return the columns common to all donor files (lowercase)."""
+    common_columns = None
+    
+    if df_donor_info.empty:
+        return []
+
+    for _, row in df_donor_info.iterrows():
+        with laspy.open(row["full_path"]) as donor_file:
+            donor_columns = set(get_field_from_header(donor_file))
+        common_columns = donor_columns if common_columns is None else common_columns & donor_columns
+
+    common_columns = list(common_columns) if common_columns is not None else []
+
+    #make sure the common columns are the ones we expect (needed for LiDAR treatment)
+    assert all(col in common_columns for col in ["x", "y", "z", "classification", "gps_time", "intensity", "return_number", "number_of_returns"])
+
+    return common_columns
+
+
 def get_complementary_points(
     df_donor_info: gpd.GeoDataFrame, recipient_file_path: str, tile_origin: Tuple[int, int], config: DictConfig
 ) -> pd.DataFrame:
@@ -119,8 +139,8 @@ def get_complementary_points(
         df_recipient_points.groupby(by=[c.PATCH_X_STR, c.PATCH_Y_STR]).count().classification == 0
     )
 
+    donor_common_columns = get_common_donor_columns(df_donor_info)
     dfs_donor_points = []
-
     for index, row in df_donor_info.iterrows():
         with laspy.open(row["full_path"]) as donor_file:
             raw_donor_points = donor_file.read().points
@@ -131,14 +151,13 @@ def get_complementary_points(
             points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
             donor_points = raw_donor_points[points_in_footprint_gdf.index.values]
 
-            donor_columns = get_field_from_header(donor_file)
             dfs_donor_points.append(
                 get_selected_classes_points(
                     tile_origin,
                     donor_points,
                     config.DONOR_CLASS_LIST,
                     config.DONOR_USE_SYNTHETIC_POINTS,
-                    donor_columns,
+                    donor_common_columns,
                     patch_size=config.PATCH_SIZE,
                     tile_size=config.TILE_SIZE,
                 )
@@ -149,11 +168,6 @@ def get_complementary_points(
 
     else:
         df_donor_points = gpd.GeoDataFrame(columns=["x", "y", "z", "patch_x", "patch_y", "classification"])
-
-    #remove columns that contains NaN (especially when las files are from different versions)  
-    df_donor_points = df_donor_points.dropna(axis=1)
-    # and verrify that colums x, y, z, patch_x, patch_y, classification are in the dataframe 
-    assert all(col in df_donor_points.columns for col in ["x", "y", "z", "patch_x", "patch_y", "classification"])
 
     # for each (patch_x,patch_y) patch, we join to a donor point the count of recipient points on that patch
     # since it's a left join, it keeps all the left record (all the donor points)
