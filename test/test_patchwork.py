@@ -609,3 +609,20 @@ def test_patchwork_with_different_las_format(tmp_path_factory):
 
     output_path = os.path.join(tmp_file_dir, tmp_output_las_name)
     assert os.path.isfile(output_path)
+
+    expected_nb_added_points = 154762
+
+    with laspy.open(recipient_path) as recipient_file:
+        recipient_points = recipient_file.read().points
+        
+    with laspy.open(output_path) as las_file:
+        output_points = las_file.read().points
+        assert {n for n in las_file.header.point_format.dimension_names} == {
+            n for n in las_file.header.point_format.standard_dimension_names
+        } | {"Origin"}
+        assert len(output_points) == len(recipient_points) + expected_nb_added_points
+        assert np.sum(output_points.Origin == 0) == len(recipient_points)
+        assert np.sum(output_points.Origin == 1) == expected_nb_added_points
+
+        assert np.all(output_points.classification[output_points.Origin == 1] == 11)
+        assert not np.any(output_points.classification[output_points.Origin == 0] == 11)
