@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## dev
+- fix lorsque les las donneurs ne sont pas de même version (1.2 et 1.4): on ne garde que les attributs communs
+
 ## 1.4.0
 - **Changement de comportement** :
     Le champ "DONOR_CLASS_TRANSLATION" décrit maintenant l'association entre les classes du fichier donneur et les classes correspondantes dans le fichier de sortie. Au lieu de choisir entre ajouter une colonne et modifier les classes entre le fichier de donneur et le fichier de sortie, on applique maintenant les 2 traitements :

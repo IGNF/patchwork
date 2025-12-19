@@ -95,6 +95,22 @@ def get_type(new_column_size: int):
             raise ValueError(f"{new_column_size} is not a correct value for NEW_COLUMN_SIZE")
 
 
+def get_common_las_columns(las_files: List[str]) -> List[str]:
+    """Return the columns common to all las files (lowercase)."""
+    with laspy.open(las_files[0]) as las_file:
+        common_columns = set(get_field_from_header(las_file))
+    for las_file_path in las_files[1:]:
+        with laspy.open(las_file_path) as las_file:
+            common_columns = common_columns & set(get_field_from_header(las_file))
+    return list(common_columns)
+
+
+def get_common_donor_columns(df_donor_info: gpd.GeoDataFrame) -> List[str]:
+    """Return the columns common to all donor files (lowercase)."""
+    las_files = [row["full_path"] for _, row in df_donor_info.iterrows()]
+    return get_common_las_columns(las_files)
+
+
 def get_complementary_points(
     df_donor_info: gpd.GeoDataFrame, recipient_file_path: str, tile_origin: Tuple[int, int], config: DictConfig
 ) -> pd.DataFrame:
@@ -120,31 +136,31 @@ def get_complementary_points(
     )
 
     dfs_donor_points = []
-
-    for index, row in df_donor_info.iterrows():
-        with laspy.open(row["full_path"]) as donor_file:
-            raw_donor_points = donor_file.read().points
-            points_loc_gdf = gpd.GeoDataFrame(
-                geometry=gpd.points_from_xy(raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS)
-            )
-            footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]], crs=config.CRS)
-            points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
-            donor_points = raw_donor_points[points_in_footprint_gdf.index.values]
-
-            donor_columns = get_field_from_header(donor_file)
-            dfs_donor_points.append(
-                get_selected_classes_points(
-                    tile_origin,
-                    donor_points,
-                    config.DONOR_CLASS_LIST,
-                    config.DONOR_USE_SYNTHETIC_POINTS,
-                    donor_columns,
-                    patch_size=config.PATCH_SIZE,
-                    tile_size=config.TILE_SIZE,
-                )
-            )
-
+    
     if len(df_donor_info.index):
+        donor_common_columns = get_common_donor_columns(df_donor_info)
+        for index, row in df_donor_info.iterrows():
+            with laspy.open(row["full_path"]) as donor_file:
+                raw_donor_points = donor_file.read().points
+                points_loc_gdf = gpd.GeoDataFrame(
+                    geometry=gpd.points_from_xy(raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS)
+                )
+                footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]], crs=config.CRS)
+                points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
+                donor_points = raw_donor_points[points_in_footprint_gdf.index.values]
+
+                dfs_donor_points.append(
+                    get_selected_classes_points(
+                        tile_origin,
+                        donor_points,
+                        config.DONOR_CLASS_LIST,
+                        config.DONOR_USE_SYNTHETIC_POINTS,
+                        donor_common_columns,
+                        patch_size=config.PATCH_SIZE,
+                        tile_size=config.TILE_SIZE,
+                    )
+                )
+
         df_donor_points = pd.concat(dfs_donor_points)
 
     else:
