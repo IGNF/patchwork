@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 1.4.2
+- fix: écrase la colonne "NEW_COLUMN" si elle existe dans le fichier receveur
+
 ## 1.4.1
 - fix lorsque les las donneurs ne sont pas de même version (1.2 et 1.4): on ne garde que les attributs communs
 

@@ -11,9 +11,9 @@ from pdaltools.las_info import get_tile_origin_using_header_info
 import patchwork.constants as c
 from patchwork.patchwork import (
     append_points,
+    get_common_las_columns,
     get_complementary_points,
     get_field_from_header,
-    get_common_las_columns,
     get_selected_classes_points,
     get_type,
     patchwork,
@@ -434,6 +434,11 @@ def test_patchwork_default(tmp_path_factory, recipient_path, expected_nb_added_p
             True,
             0,
         ),  # No donor
+        (
+            "test/data/lidar_HD_decimated_with_origin_value/Semis_2022_0673_6362_LA93_IGN69_with_origin.laz",
+            True,
+            128675,
+        ),  # One donor. Origin dimension already in input file
     ],
 )
 def test_patchwork_with_origin(tmp_path_factory, recipient_path, donor_use_synthetic_points, expected_nb_added_points):
@@ -563,25 +568,40 @@ def test_patchwork_with_mount_points(tmp_path_factory, input_shp_path, recipient
         assert np.all(output_points.classification[output_points.Origin == 1] == 11)
         assert not np.any(output_points.classification[output_points.Origin == 0] == 11)
 
+
 @pytest.mark.parametrize(
     "las_liste",
     [
-        (["test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6363_LAMB93_IGN69_20170519.laz", "test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6364_LAMB93_IGN69_20170519.laz"]),
-        (['test/data/grand_geneve/grand_geneve_BD/data/NUALID_1-0_DS19RFAN_PTS_0963_6543_LAMB93_IGN69_20191002.laz', 'test/data/grand_geneve/grand_geneve_BD/data2/0963_6543.laz']),
+        (
+            [
+                "test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6363_LAMB93_IGN69_20170519.laz",
+                "test/data/aveyron_lidarBD/data/NUALID_1-0_IAVEY_PTS_0673_6364_LAMB93_IGN69_20170519.laz",
+            ]
+        ),
+        (
+            [
+                "test/data/grand_geneve/grand_geneve_BD/data"
+                + "/NUALID_1-0_DS19RFAN_PTS_0963_6543_LAMB93_IGN69_20191002.laz",
+                "test/data/grand_geneve/grand_geneve_BD/data2/0963_6543.laz",
+            ]
+        ),
     ],
 )
 def test_get_common_las_columns(las_liste):
     common_columns = get_common_las_columns(las_liste)
-    assert all(col in common_columns for col in ["x", "y", "z", "classification", "gps_time", "intensity", "return_number", "number_of_returns"])
+    assert all(
+        col in common_columns
+        for col in ["x", "y", "z", "classification", "gps_time", "intensity", "return_number", "number_of_returns"]
+    )
 
 
 def test_patchwork_with_different_las_format(tmp_path_factory):
 
-    recipient_path=  "test/data/grand_geneve/lidar_HD_decimate/Semis_2021_0963_6543_LA93_IGN69_decimate.laz"
+    recipient_path = "test/data/grand_geneve/lidar_HD_decimate/Semis_2021_0963_6543_LA93_IGN69_decimate.laz"
     input_shp_path = "test/data/grand_geneve/geometry_GrandGeneve/zones.geojson"
     tmp_file_dir = tmp_path_factory.mktemp("data")
     tmp_output_las_name = "result_patchwork_different_las.laz"
-    
+
     tmp_output_indices_map_name = "result_patchwork_indices.tif"
     donor_class_translation = {2: 11, 9: 11}
 
@@ -594,7 +614,7 @@ def test_patchwork_with_different_las_format(tmp_path_factory):
                 f"filepath.SHP_DIRECTORY={os.path.dirname(input_shp_path)}",
                 f"filepath.SHP_NAME={os.path.basename(input_shp_path)}",
                 f"filepath.OUTPUT_DIR={tmp_file_dir}",
-                f"filepath.DONOR_SUBDIRECTORY=''",
+                "filepath.DONOR_SUBDIRECTORY=''",
                 f"filepath.OUTPUT_NAME={tmp_output_las_name}",
                 f"filepath.OUTPUT_INDICES_MAP_DIR={tmp_file_dir}",
                 f"filepath.OUTPUT_INDICES_MAP_NAME={tmp_output_indices_map_name}",
@@ -614,7 +634,7 @@ def test_patchwork_with_different_las_format(tmp_path_factory):
 
     with laspy.open(recipient_path) as recipient_file:
         recipient_points = recipient_file.read().points
-        
+
     with laspy.open(output_path) as las_file:
         output_points = las_file.read().points
         assert {n for n in las_file.header.point_format.dimension_names} == {

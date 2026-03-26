@@ -1,4 +1,5 @@
 import os
+import warnings
 from shutil import copy2
 from typing import List, Tuple
 
@@ -136,14 +137,16 @@ def get_complementary_points(
     )
 
     dfs_donor_points = []
-    
+
     if len(df_donor_info.index):
         donor_common_columns = get_common_donor_columns(df_donor_info)
         for index, row in df_donor_info.iterrows():
             with laspy.open(row["full_path"]) as donor_file:
                 raw_donor_points = donor_file.read().points
                 points_loc_gdf = gpd.GeoDataFrame(
-                    geometry=gpd.points_from_xy(raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS)
+                    geometry=gpd.points_from_xy(
+                        raw_donor_points.x, raw_donor_points.y, raw_donor_points.z, crs=config.CRS
+                    )
                 )
                 footprint_gdf = gpd.GeoDataFrame(geometry=[row["geometry"]], crs=config.CRS)
                 points_in_footprint_gdf = points_loc_gdf.sjoin(footprint_gdf, how="inner", predicate="intersects")
@@ -190,7 +193,7 @@ def get_field_from_header(las_file: LasReader) -> List[str]:
 
 def test_field_exists(file_path: str, column: str) -> bool:
     output_file = laspy.read(file_path)
-    return column in get_field_from_header(output_file)
+    return column.lower() in get_field_from_header(output_file)
 
 
 def append_points(config: DictConfig, extra_points: pd.DataFrame):
@@ -217,19 +220,21 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
     copy2(recipient_filepath, output_filepath)
 
-    # if we want a new column, we start by adding its name
+    # if we want a new column, we start by adding its name (or remove the existing column)
+
     if config.NEW_COLUMN:
-        if test_field_exists(recipient_filepath, config.NEW_COLUMN):
-            raise ValueError(
-                f"{config.NEW_COLUMN} already exists as \
-                             column name in {recipient_filepath}"
-            )
-        new_column_type = get_type(config.NEW_COLUMN_SIZE)
         output_las = laspy.read(output_filepath)
+
+        if test_field_exists(recipient_filepath, config.NEW_COLUMN):
+            warnings.warn(
+                f"{config.NEW_COLUMN} already exists as a column name in {recipient_filepath}. Overwriting it."
+            )
+            output_las.remove_extra_dim(config.NEW_COLUMN)
+
         output_las.add_extra_dim(
             laspy.ExtraBytesParams(
                 name=config.NEW_COLUMN,
-                type=new_column_type,
+                type=get_type(config.NEW_COLUMN_SIZE),
                 description="Point origin: 0=initial las",
             )
         )
