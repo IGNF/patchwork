@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## Not yes released
+- Check that las/laz output can be read by pdal.
+
 ## 1.4.1
 - fix lorsque les las donneurs ne sont pas de même version (1.2 et 1.4): on ne garde que les attributs communs
 

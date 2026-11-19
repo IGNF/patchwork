@@ -9,6 +9,7 @@ import pandas as pd
 from laspy import LasReader, ScaleAwarePointRecord
 from omegaconf import DictConfig
 from pdaltools.las_info import get_tile_origin_using_header_info
+from pdaltools.check_las import check_pdal_can_open_file_with_retry
 
 import patchwork.constants as c
 from patchwork.indices_map import create_indices_map
@@ -257,6 +258,8 @@ def append_points(config: DictConfig, extra_points: pd.DataFrame):
 
         new_points.classification = extra_points[c.CLASSIFICATION_STR]
         output_las.append_points(new_points)
+
+    check_pdal_can_open_file_with_retry(output_filepath, 10)
 
 
 def patchwork(config: DictConfig):
