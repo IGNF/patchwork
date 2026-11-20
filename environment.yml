@@ -27,4 +27,4 @@ dependencies:
     # TODO: use conda again for laspy installation once a new version is released
     - lazrs>=0.7.0
     - git+https://github.com/laspy/laspy.git#egg[lazrs]
-    - ign-pdal-tools==1.11.1
+    - ign-pdal-tools>=1.18.1
