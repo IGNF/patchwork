@@ -1,6 +1,8 @@
 # CHANGELOG
 
-## Not yes released
+## NOT YET RELEASED
+
+## 1.5.0
 - Check that las/laz output can be read by pdal.
 
 ## 1.4.1
